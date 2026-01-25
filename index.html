@@ -629,6 +629,27 @@
             return await response.json();
         }
 
+        function selecionarPagamento(metodo) {
+    state.metodoPagamento = metodo;
+    
+    // Remove o destaque de todos
+    document.querySelectorAll('.pay-btn').forEach(btn => {
+        btn.classList.remove('border-green-600', 'bg-green-50', 'text-green-600', 'ring-2', 'ring-green-600');
+    });
+    
+    // Adiciona destaque ao selecionado
+    const btnAtivo = document.getElementById(`pay-${metodo}`);
+    if (btnAtivo) {
+        btnAtivo.classList.add('border-green-600', 'bg-green-50', 'text-green-600', 'ring-2', 'ring-green-600');
+    }
+
+    // Mostra/Esconde a chave PIX
+    const pixInfo = document.getElementById('pix-info');
+    if (pixInfo) {
+        metodo === 'PIX' ? pixInfo.classList.remove('hidden') : pixInfo.classList.add('hidden');
+    }
+}
+
         // ============================================
         // 👨‍💼 PAINEL ADMIN
         // ============================================
@@ -1133,7 +1154,7 @@
                     </div>
                 </div>
                 
-                <button type="submit" class="w-full bg-orange-600 text-white py-4 rounded-xl font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
+                <button type="submit" class="w-full bg-orange-600 text-white py-4 rounded-xl font-semibold hover:bg-black-700 transition-colors flex items-center justify-center gap-2">
         <span>Finalizar Pedido (PIX)</span>
     </button>
 
