@@ -353,7 +353,9 @@
                     mostrarNotificacao('Login realizado com sucesso!', 'success');
                 } else {
                     const nome = document.getElementById('auth-nome').value;
-                    const whatsapp = document.getElementById('auth-whatsapp').value;
+                    // Localize onde você pega o valor do whatsapp e adicione o .replace
+                    const whatsappRaw = document.getElementById('auth-whatsapp').value;
+                    const whatsapp = whatsappRaw.replace(/\D/g, ''); // Salva só números no banco: 31999999999
 
                     if (!nome || !whatsapp) {
                         mostrarNotificacao('Preencha todos os campos', 'error');
@@ -385,14 +387,45 @@
             }
         }
 
+        // Adicione este listener para formatar enquanto o usuário digita
+        document.addEventListener('input', function (e) {
+            if (e.target.id === 'auth-whatsapp') {
+                let v = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+
+                if (v.length > 11) v = v.slice(0, 11); // Limita a 11 números
+
+                if (v.length > 10) {
+                    // Formato (99) 99999-9999
+                    v = v.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+                } else if (v.length > 6) {
+                    // Formato (99) 9999-9999
+                    v = v.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+                } else if (v.length > 2) {
+                    // Formato (99) 9
+                    v = v.replace(/^(\d{2})(\d{0,5}).*/, "($1) $2");
+                } else if (v.length > 0) {
+                    // Formato (99
+                    v = v.replace(/^(\d*)/, "($1");
+                }
+                e.target.value = v;
+            }
+        });
+
         function formatarTelefone(v) {
             if (!v) return 'Sem número';
-            v = v.replace(/\D/g, ""); // Remove tudo que não é número
-            v = v.replace(/^(\d{2})(\d)/g, "($1) $2"); // Coloca parênteses
-            v = v.replace(/(\d{5})(\d)/, "$1-$2");    // Coloca o hífen
-            return v;
-        }
+            // Remove qualquer coisa que não seja número
+            let n = v.replace(/\D/g, "");
 
+            // Se tiver 11 dígitos (celular com 9)
+            if (n.length === 11) {
+                return n.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+            }
+            // Se tiver 10 dígitos (fixo)
+            if (n.length === 10) {
+                return n.replace(/^(\d{2})(\d{4})(\d{4})$/, "($1) $2-$3");
+            }
+            return v; // Retorna o original se não encaixar nos padrões
+        }
         function limparFormAuth() {
             document.getElementById('auth-email').value = '';
             document.getElementById('auth-senha').value = '';
