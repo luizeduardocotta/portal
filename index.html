@@ -166,6 +166,7 @@
 
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+
         // ============================================
         // 💾 ESTADO DA APLICAÇÃO
         // ============================================
@@ -1235,7 +1236,7 @@
         <div class="max-w-7xl mx-auto px-4 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <img src="img/logo.webp" class="h-24 w-auto" alt="Logo da loja">
+                    <img id="logo-loja" src="img/logo.webp" class="h-24 w-auto" alt="Logo da loja">
                     <span class="text-2xl font-bold text-black" id="nome-loja"></span>
                 </div>
 
