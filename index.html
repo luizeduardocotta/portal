@@ -290,14 +290,15 @@
                 // Pega o primeiro nome e o whatsapp do estado
                 const primeiroNome = (state.usuarioAtual.nome || 'Usuário').split(' ')[0];
                 const telefone = state.usuarioAtual.whatsapp || 'Sem número';
+                const telefoneFormatado = formatarTelefone(state.usuarioAtual.whatsapp);
 
                 // HTML padronizado: Nome em destaque e telefone pequeno abaixo
                 userDisplay.innerHTML = `
-            <div class="flex flex-col items-end mr-3 leading-tight">
+               <div class="flex flex-col items-end mr-3 leading-tight">
                 <span class="text-sm font-bold text-gray-900">${primeiroNome}</span>
-                <span class="text-[10px] text-green-600 font-medium">${telefone}</span>
-            </div>
-        `;
+                <span class="text-[10px] text-green-600 font-medium">${telefoneFormatado}</span>
+               </div>
+               `;
 
                 btnLogin.classList.add('hidden');
                 btnLogout.classList.remove('hidden');
@@ -382,6 +383,14 @@
             } catch (error) {
                 mostrarNotificacao('Erro: ' + error.message, 'error');
             }
+        }
+
+        function formatarTelefone(v) {
+            if (!v) return 'Sem número';
+            v = v.replace(/\D/g, ""); // Remove tudo que não é número
+            v = v.replace(/^(\d{2})(\d)/g, "($1) $2"); // Coloca parênteses
+            v = v.replace(/(\d{5})(\d)/, "$1-$2");    // Coloca o hífen
+            return v;
         }
 
         function limparFormAuth() {
