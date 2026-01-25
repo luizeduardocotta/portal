@@ -164,7 +164,7 @@
         const MERCADO_PAGO_ACCESS_TOKEN = 'SEU_ACCESS_TOKEN_MERCADO_PAGO_AQUI';
         const WEBHOOK_URL = 'SUA_URL_WEBHOOK_AQUI'; // URL da sua função serverless
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
         // ============================================
@@ -246,7 +246,7 @@
         // ============================================
 
         async function inicializarAuth() {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await supabaseClient.auth.getUser();
             if (user) {
                 await carregarUsuario(user);
             }
@@ -315,7 +315,7 @@
 
             try {
                 if (state.modoAuth === 'login') {
-                    const { data, error } = await supabase.auth.signInWithPassword({ 
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({ 
                         email, 
                         password: senha 
                     });
@@ -331,14 +331,14 @@
                         return;
                     }
 
-                    const { data, error } = await supabase.auth.signUp({ 
+                    const { data, error } = await supabaseClient.auth.signUp({ 
                         email, 
                         password: senha 
                     });
                     if (error) throw error;
 
                     const isAdmin = email === CONFIG.adminEmail;
-                    await supabase.from('perfis').insert({
+                    await supabaseClient.from('perfis').insert({
                         id: data.user.id,
                         nome,
                         whatsapp,
@@ -364,7 +364,7 @@
         }
 
         async function logout() {
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             state.usuarioAtual = null;
             state.carrinho = [];
             atualizarInterfaceUsuario();
@@ -499,7 +499,7 @@
                     preco_unitario: item.preco
                 }));
 
-                await supabase.from('itens_pedido').insert(itensPedido);
+                await supabaseClient.from('itens_pedido').insert(itensPedido);
 
                 // Criar preferência no Mercado Pago
                 const preference = await criarPreferenciaMercadoPago(pedido.id, total);
@@ -784,10 +784,10 @@
 
             try {
                 if (id) {
-                    await supabase.from('produtos').update(dados).eq('id', id);
+                    await supabaseClient.from('produtos').update(dados).eq('id', id);
                     mostrarNotificacao('Produto atualizado com sucesso!', 'success');
                 } else {
-                    await supabase.from('produtos').insert(dados);
+                    await supabaseClient.from('produtos').insert(dados);
                     mostrarNotificacao('Produto criado com sucesso!', 'success');
                 }
 
@@ -802,7 +802,7 @@
         async function excluirProduto(produtoId) {
             if (!confirm('Tem certeza que deseja excluir este produto?')) return;
             try {
-            await supabase.from('produtos').delete().eq('id', produtoId);
+            await supabaseClient.from('produtos').delete().eq('id', produtoId);
             await carregarProdutosAdmin();
             await carregarProdutos();
             mostrarNotificacao('Produto excluído com sucesso!', 'success');
