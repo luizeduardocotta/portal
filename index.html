@@ -261,9 +261,17 @@
         // ============================================
 
         async function inicializarAuth() {
-            const { data: { user } } = await supabaseClient.auth.getUser();
+            // Carrega os produtos primeiro, independente de quem está logado
+            carregarProdutos();
+
+            const { data: { user }, error } = await supabaseClient.auth.getUser();
+
             if (user) {
+                // Se houver usuário, tenta carregar o perfil em segundo plano
                 await carregarUsuario(user);
+            } else {
+                // Se não houver, apenas garante que a interface está no modo visitante
+                atualizarInterfaceUsuario();
             }
         }
 
@@ -449,7 +457,6 @@
 
         async function carregarProdutos() {
             try {
-                // Chamada correta usando o supabaseClient e ordenando por nome
                 const { data: produtos, error } = await supabaseClient
                     .from('produtos')
                     .select('*')
@@ -457,11 +464,11 @@
 
                 if (error) throw error;
 
-                // Atualiza o estado e renderiza a tela
                 state.produtos = produtos || [];
-                renderizarProdutos(); // Certifique-se de usar o nome correto da sua função de desenho
 
-                console.log("Produtos carregados com sucesso:", state.produtos.length);
+                // ATENÇÃO: Verifique se este nome abaixo está igual à sua função de desenho
+                renderizarProdutos();
+
             } catch (error) {
                 console.error('Erro ao carregar produtos:', error.message);
             }
@@ -630,25 +637,25 @@
         }
 
         function selecionarPagamento(metodo) {
-    state.metodoPagamento = metodo;
-    
-    // Remove o destaque de todos
-    document.querySelectorAll('.pay-btn').forEach(btn => {
-        btn.classList.remove('border-green-600', 'bg-green-50', 'text-green-600', 'ring-2', 'ring-green-600');
-    });
-    
-    // Adiciona destaque ao selecionado
-    const btnAtivo = document.getElementById(`pay-${metodo}`);
-    if (btnAtivo) {
-        btnAtivo.classList.add('border-green-600', 'bg-green-50', 'text-green-600', 'ring-2', 'ring-green-600');
-    }
+            state.metodoPagamento = metodo;
 
-    // Mostra/Esconde a chave PIX
-    const pixInfo = document.getElementById('pix-info');
-    if (pixInfo) {
-        metodo === 'PIX' ? pixInfo.classList.remove('hidden') : pixInfo.classList.add('hidden');
-    }
-}
+            // Remove o destaque de todos
+            document.querySelectorAll('.pay-btn').forEach(btn => {
+                btn.classList.remove('border-green-600', 'bg-green-50', 'text-green-600', 'ring-2', 'ring-green-600');
+            });
+
+            // Adiciona destaque ao selecionado
+            const btnAtivo = document.getElementById(`pay-${metodo}`);
+            if (btnAtivo) {
+                btnAtivo.classList.add('border-green-600', 'bg-green-50', 'text-green-600', 'ring-2', 'ring-green-600');
+            }
+
+            // Mostra/Esconde a chave PIX
+            const pixInfo = document.getElementById('pix-info');
+            if (pixInfo) {
+                metodo === 'PIX' ? pixInfo.classList.remove('hidden') : pixInfo.classList.add('hidden');
+            }
+        }
 
         // ============================================
         // 👨‍💼 PAINEL ADMIN
@@ -873,38 +880,60 @@
             if (event) event.preventDefault();
 
             const id = document.getElementById('edit-produto-id').value;
-            const produtoData = {
-                nome: document.getElementById('edit-nome').value,
-                preco: parseFloat(document.getElementById('edit-preco').value),
-                descricao: document.getElementById('edit-descricao').value,
-                categoria: document.getElementById('edit-categoria').value,
-                caminho_imagem_local: document.getElementById('edit-imagem').value,
-                estoque: parseInt(document.getElementById('edit-estoque').value)
-            };
+            const fileInput = document.getElementById('edit-arquivo');
+            const file = fileInput.files[0];
+            // Mantém a imagem atual caso o admin não selecione uma nova
+            let urlImagem = document.getElementById('edit-imagem').value;
 
             try {
+                // 1. Se um novo arquivo foi selecionado, faz o upload para o Storage
+                if (file) {
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+                    const filePath = fileName;
+
+                    // Faz o upload para o bucket 'produtos' (certifique-se de ter criado ele no Supabase)
+                    const { error: uploadError } = await supabaseClient.storage
+                        .from('produtos')
+                        .upload(filePath, file);
+
+                    if (uploadError) throw uploadError;
+
+                    // Pega a URL pública da imagem recém-enviada
+                    const { data: { publicUrl } } = supabaseClient.storage
+                        .from('produtos')
+                        .getPublicUrl(filePath);
+
+                    urlImagem = publicUrl;
+                }
+
+                // 2. Prepara os dados para salvar na tabela 'produtos'
+                const produtoData = {
+                    nome: document.getElementById('edit-nome').value,
+                    preco: parseFloat(document.getElementById('edit-preco').value),
+                    descricao: document.getElementById('edit-descricao').value,
+                    categoria: document.getElementById('edit-categoria').value,
+                    caminho_imagem_local: urlImagem, // Agora salva a URL do Storage
+                    estoque: parseInt(document.getElementById('edit-estoque').value)
+                };
+
                 let result;
                 if (id) {
-                    // Se tem ID, atualiza (UPDATE)
-                    result = await supabaseClient
-                        .from('produtos')
-                        .update(produtoData)
-                        .eq('id', id);
+                    result = await supabaseClient.from('produtos').update(produtoData).eq('id', id);
                 } else {
-                    // Se não tem ID, cria novo (INSERT)
-                    result = await supabaseClient
-                        .from('produtos')
-                        .insert([produtoData]);
+                    result = await supabaseClient.from('produtos').insert([produtoData]);
                 }
 
                 if (result.error) throw result.error;
-
-                alert('Produto salvo com sucesso!');
+ 
+                mostrarNotificacao('Produto salvo com sucesso!', 'success');
                 fecharModal('modal-edit-produto');
-                carregarProdutos(); // Recarrega a lista da loja e do admin
+                // Limpa o campo de arquivo para o próximo uso
+                fileInput.value = '';
+                carregarProdutos();
             } catch (error) {
                 console.error('Erro ao salvar:', error);
-                alert('Erro ao salvar produto: ' + error.message);
+                mostrarNotificacao('Erro ao salvar: ' + error.message, 'error');
             }
         }
 
@@ -1298,10 +1327,11 @@
                         class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Caminho da Imagem (ex:
-                        img/produto1.webp)</label>
-                    <input type="text" id="edit-imagem"
-                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black focus:border-transparent">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Foto do Produto</label>
+                    <input type="hidden" id="edit-imagem">
+                    <input type="file" id="edit-arquivo" accept="image/*"
+                        class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-black bg-gray-50">
+                    <p class="text-[10px] text-gray-500 mt-1">Selecione uma imagem do seu computador.</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Estoque</label>
