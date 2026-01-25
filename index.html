@@ -164,8 +164,7 @@
         const MERCADO_PAGO_ACCESS_TOKEN = 'SEU_ACCESS_TOKEN_MERCADO_PAGO_AQUI';
         const WEBHOOK_URL = 'SUA_URL_WEBHOOK_AQUI'; // URL da sua função serverless
 
-        const supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ============================================
         // 💾 ESTADO DA APLICAÇÃO
