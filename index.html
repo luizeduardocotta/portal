@@ -1385,16 +1385,21 @@ async function processarPagamento() {
  
         lucide.createIcons();  
 
-    // Se o frete já foi escolhido, monta o Mercado Pago
-if (state.freteSelecionado > 0) {
-    setTimeout(() => {
-        inicializarMercadoPago();
-    }, 300);
-}
-
-
-        
+  if (state.freteSelecionado > 0) {
+        const formCheckout = document.getElementById('form-checkout');
+        if (formCheckout) {
+            // 1. Primeiro removemos o hidden para as divs existirem visualmente
+            formCheckout.classList.remove('hidden');
+            
+            // 2. Esperamos um tempo maior (1 segundo) para o navegador renderizar tudo
+            setTimeout(() => {
+                console.log("Iniciando montagem do CardForm...");
+                inicializarMercadoPago();
+            }, 1000); 
+        }
+    } 
     }
+
 
     function mascaraCEP(input) {
         let v = input.value.replace(/\D/g, "");
@@ -1974,3 +1979,4 @@ async function inicializarMercadoPago() {
 </body>
 
 </html>
+
