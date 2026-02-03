@@ -1372,6 +1372,9 @@
         <select id="installments" class="w-full border p-3 rounded-xl text-sm bg-white"></select>
     </div>
 
+    <!-- Campo oculto necessário para o Mercado Pago V2 -->
+    <select id="issuer" class="hidden"></select>
+
    <button type="submit" id="btn-pagar" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold shadow-lg hover:bg-green-700 transition-all">
     CONFIRMAR PAGAMENTO AGORA
 </button>
@@ -1885,11 +1888,11 @@
 
 <script>
         window.cardForm = null;
-        window.mpIniciado = false;
+        window.mpCarregando = false;
 
         async function inicializarMercadoPago() {
     // 1. Só continua se tivermos a chave e se já não houver uma carga em curso
-    if (!window.MP_PUBLIC_KEY || mpCarregando) return;
+    if (!window.MP_PUBLIC_KEY || window.mpCarregando) return;
 
     // 2. VERIFICAÇÃO CRÍTICA: Os containers existem no HTML neste exato milissegundo?
     const containerTeste = document.getElementById("cardNumber-container");
@@ -1898,14 +1901,33 @@
         return; 
     }
 
-    mpCarregando = true;
+    window.mpCarregando = true;
 
     try {
         // Limpa instâncias fantasmas
         if (window.cardForm) {
-            await window.cardForm.unmount();
+            console.log("MP: Desmontando instância anterior...");
+            if (typeof window.cardForm.unmount === 'function') {
+                try {
+                    await window.cardForm.unmount();
+                } catch (unmountError) {
+                    console.warn("MP: Erro ao desmontar (ignorado):", unmountError.message);
+                }
+            }
             window.cardForm = null;
         }
+
+        // LIMPA OS CONTAINERS MANUALMENTE para remover iframes residuais
+        const containers = ["cardNumber-container", "expirationDate-container", "securityCode-container"];
+        containers.forEach(id => {
+            const container = document.getElementById(id);
+            if (container) container.innerHTML = "";
+        });
+
+        // Aguarda um pouco para garantir que o DOM está limpo
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        console.log("MP: Criando nova instância...");
 
         const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
         
@@ -1925,11 +1947,12 @@
                 cardholderName: { id: "cardholderName" },
                 cardholderEmail: { id: "cardholderEmail" },
                 installments: { id: "installments" },
+                issuer: { id: "issuer" },
                 identificationNumber: { id: "docNumber" },
             },
             callbacks: {
                 onFormMounted: error => {
-                    mpCarregando = false;
+                    window.mpCarregando = false;
                     if (error) return console.error("Erro MP:", error);
                     console.log("✅ AGORA SIM: Campos prontos!");
                 },
@@ -1941,7 +1964,10 @@
         });
     } catch (e) {
         console.error("Falha fatal MP:", e);
-        mpCarregando = false;
+        console.error("Detalhes do erro:", JSON.stringify(e, null, 2));
+        console.error("Mensagem:", e.message);
+        console.error("Stack:", e.stack);
+        window.mpCarregando = false;
     }
 }
 </script>
