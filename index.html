@@ -5,6 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drogaria Adonai</title>
+    <link rel="icon"<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drogaria Adonai</title>
     <link rel="icon" href="img/favicon.webp" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1394,21 +1401,23 @@
     </div>
     `;
 
-        lucide.createIcons();
 
 
         lucide.createIcons();
 
-        if (state.freteSelecionado > 0) {
-            const checkoutForm = document.getElementById('form-checkout');
-            if (checkoutForm) {
-                checkoutForm.classList.remove('hidden');
-                // Usamos um tempo maior apenas na primeira vez
-                setTimeout(() => {
-                    inicializarMercadoPago();
-                }, 800);
-            }
+        
+
+    if (state.freteSelecionado > 0) {
+        const f = document.getElementById('form-checkout');
+        if (f) {
+            f.classList.remove('hidden'); // MOSTRA O FORMULÁRIO PRIMEIRO
+            
+            // AGUARDA O NAVEGADOR "RESPIRAR"
+            setTimeout(() => {
+                inicializarMercadoPago();
+            }, 1200); // 1.2 segundos é o tempo de segurança
         }
+    }
     }
         function mascaraCEP(input) {
             let v = input.value.replace(/\D/g, "");
@@ -1886,64 +1895,62 @@
         window.mpIniciado = false;
 
         async function inicializarMercadoPago() {
-            if (!window.MP_PUBLIC_KEY || mpCarregando) return;
+    // 1. Só continua se tivermos a chave e se já não houver uma carga em curso
+    if (!window.MP_PUBLIC_KEY || mpCarregando) return;
 
-            mpCarregando = true; // Ativa a trava
+    // 2. VERIFICAÇÃO CRÍTICA: Os containers existem no HTML neste exato milissegundo?
+    const containerTeste = document.getElementById("cardNumber-container");
+    if (!containerTeste) {
+        console.warn("Mercado Pago: Containers não encontrados. Tentando novamente em breve...");
+        return; 
+    }
 
-            try {
-                // 1. Limpeza total de instâncias anteriores
-                if (window.cardForm) {
-                    await window.cardForm.unmount();
-                    window.cardForm = null;
-                }
+    mpCarregando = true;
 
-                // 2. Limpeza física dos containers para garantir que não haja lixo
-                const containers = ["cardNumber-container", "expirationDate-container", "securityCode-container"];
-                containers.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.innerHTML = "";
-                });
-
-                // 3. Pequena pausa para o DOM respirar
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
-
-                const totalVenda = (
-                    state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0)
-                    + (state.freteSelecionado || 0)
-                ).toFixed(2);
-
-                window.cardForm = mp.cardForm({
-                    amount: totalVenda.toString(),
-                    iframe: true,
-                    form: {
-                        id: "form-checkout",
-                        cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
-                        expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
-                        securityCode: { id: "securityCode-container", placeholder: "CVV" },
-                        cardholderName: { id: "cardholderName" },
-                        cardholderEmail: { id: "cardholderEmail" },
-                        installments: { id: "installments" },
-                        identificationNumber: { id: "docNumber" },
-                    },
-                    callbacks: {
-                        onFormMounted: error => {
-                            mpCarregando = false; // Libera a trava
-                            if (error) return console.error("Erro ao montar campos:", error);
-                            console.log("✅ Campos brancos liberados para digitação!");
-                        },
-                        onSubmit: (event) => {
-                            event.preventDefault();
-                            processarPagamento(window.cardForm.getCardFormData());
-                        }
-                    }
-                });
-            } catch (e) {
-                console.error("Erro na inicialização:", e);
-                mpCarregando = false; // Libera a trava em caso de erro
-            }
+    try {
+        // Limpa instâncias fantasmas
+        if (window.cardForm) {
+            await window.cardForm.unmount();
+            window.cardForm = null;
         }
+
+        const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
+        
+        const totalVenda = (
+            state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0)
+            + (state.freteSelecionado || 0)
+        ).toFixed(2);
+
+        window.cardForm = mp.cardForm({
+            amount: totalVenda.toString(),
+            iframe: true,
+            form: {
+                id: "form-checkout",
+                cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
+                expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
+                securityCode: { id: "securityCode-container", placeholder: "CVV" },
+                cardholderName: { id: "cardholderName" },
+                cardholderEmail: { id: "cardholderEmail" },
+                installments: { id: "installments" },
+                identificationNumber: { id: "docNumber" },
+            },
+            callbacks: {
+                onFormMounted: error => {
+                    mpCarregando = false;
+                    if (error) return console.error("Erro MP:", error);
+                    console.log("✅ AGORA SIM: Campos prontos!");
+                },
+                onSubmit: (event) => {
+                    event.preventDefault();
+                    processarPagamento(window.cardForm.getCardFormData());
+                }
+            }
+        });
+    } catch (e) {
+        console.error("Falha fatal MP:", e);
+        mpCarregando = false;
+    }
+}
 </script>
 
 
@@ -1996,4 +2003,5 @@
 </body>
 
 </html>
+
 
