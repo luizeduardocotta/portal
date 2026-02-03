@@ -1432,30 +1432,33 @@ if (state.freteSelecionado > 0) {
     // ============================================
 
    async function carregarDadosLoja() {
-  const { data, error } = await supabaseClient
-    .from('lojas')
-    .select('nome_loja, cep_origem, mp_public_key')
-    .eq('id', ID_DA_LOJA)
-    .single();
+    try {
+        const { data, error } = await supabaseClient
+            .from('lojas')
+            .select('*') // Busca tudo para não errar o nome da coluna
+            .eq('id', ID_DA_LOJA)
+            .single();
 
-  if (error) {
-    console.error("Erro ao buscar loja:", error);
-    return;
-  }
+        if (error || !data) {
+            console.error("Erro ao buscar loja:", error);
+            return;
+        }
 
-  if (!data?.mp_public_key) {
-    console.error("MP Public Key não encontrada:", data);
-    return;
-  }
+        // Ajuste o nome das colunas conforme seu banco (nome ou nome_loja)
+        const nomeExibir = data.nome_loja || data.nome;
+        document.getElementById('nome-loja').textContent = nomeExibir;
+        
+        state.CEP_ORIGEM_LOJA = data.cep_origem;
+        window.MP_PUBLIC_KEY = data.mp_public_key;
 
-  document.getElementById('nome-loja').textContent = data.nome_loja;
-  state.CEP_ORIGEM_LOJA = data.cep_origem;
-  window.MP_PUBLIC_KEY = data.mp_public_key;
+        console.log("MP Key carregada:", window.MP_PUBLIC_KEY);
+        
+        // Chamamos os produtos logo após carregar a loja
+        carregarProdutos(); 
 
-  console.log("MP Key carregada:", window.MP_PUBLIC_KEY);
-
-  // 👇 só agora inicializa o Mercado Pago
-  setTimeout(() => inicializarMercadoPago(), 200);
+    } catch (err) {
+        console.error("Erro catastrófico:", err);
+    }
 }
 
 
