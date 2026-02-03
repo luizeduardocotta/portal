@@ -1361,9 +1361,9 @@ async function processarPagamento() {
         <select id="installments" class="w-full border p-3 rounded-xl text-sm bg-white"></select>
     </div>
 
-    <button type="submit" id="btn-pagar" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold shadow-lg hover:bg-green-700 transition-all">
-        CONFIRMAR PAGAMENTO AGORA
-    </button>
+   <button type="submit" id="btn-pagar" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold shadow-lg hover:bg-green-700 transition-all">
+    CONFIRMAR PAGAMENTO AGORA
+</button>
 </form>
 
         <div class="bg-gray-50 p-4 rounded-2xl space-y-2 border border-gray-100">
@@ -1435,31 +1435,33 @@ if (state.freteSelecionado > 0) {
     try {
         const { data, error } = await supabaseClient
             .from('lojas')
-            .select('*') // Busca tudo para não errar o nome da coluna
+            .select('*') // Busca tudo para evitar erro de nome de coluna
             .eq('id', ID_DA_LOJA)
             .single();
 
         if (error || !data) {
             console.error("Erro ao buscar loja:", error);
+            // Mesmo com erro na loja, tentamos carregar os produtos
+            carregarProdutos(); 
             return;
         }
 
-        // Ajuste o nome das colunas conforme seu banco (nome ou nome_loja)
-        const nomeExibir = data.nome_loja || data.nome;
-        document.getElementById('nome-loja').textContent = nomeExibir;
-        
+        // Garante o preenchimento dos dados da loja
+        document.getElementById('nome-loja').textContent = data.nome_loja || data.nome;
         state.CEP_ORIGEM_LOJA = data.cep_origem;
         window.MP_PUBLIC_KEY = data.mp_public_key;
 
         console.log("MP Key carregada:", window.MP_PUBLIC_KEY);
         
-        // Chamamos os produtos logo após carregar a loja
+        // CHAMA OS PRODUTOS AQUI
         carregarProdutos(); 
 
     } catch (err) {
-        console.error("Erro catastrófico:", err);
+        console.error("Erro ao iniciar loja:", err);
+        carregarProdutos();
     }
 }
+
 
 
 </script>
