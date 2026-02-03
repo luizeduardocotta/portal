@@ -762,8 +762,6 @@
                 email: document.getElementById('cardholderEmail').value,
                 docNumber,
                 total: totalVenda,
-                endereco: document.getElementById('enderecoEntrega').value,
-                itens: state.carrinho,
                 loja_id: ID_DA_LOJA
             };
 
@@ -779,19 +777,18 @@
             const result = await response.json();
 
             if (result.status === 'approved') {
-                await salvarPedidoNoSupabase(result.id, payload);
-
-                alert("Pagamento aprovado!");
+                mostrarNotificacao("✅ Pagamento aprovado!", "success");
                 state.carrinho = [];
                 renderizarCarrinho();
-                window.location.href = "sucesso.html?id=" + result.id;
+                atualizarBadge();
+                setTimeout(() => window.location.href = `sucesso.html?id=${result.id}`, 1000);
             } else {
-                throw new Error(result.status_detail || "Pagamento recusado.");
+                throw new Error(result.status_detail || result.erro || "Pagamento recusado.");
             }
 
         } catch (error) {
             console.error("Erro MP:", error);
-            alert("Erro: " + error.message);
+            mostrarNotificacao(error.message || "Erro ao processar pagamento", "error");
             btn.disabled = false;
             btn.innerHTML = "CONFIRMAR PAGAMENTO AGORA";
         }
@@ -2022,4 +2019,5 @@
 </body>
 
 </html>
+
 
