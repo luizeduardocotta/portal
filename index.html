@@ -204,6 +204,14 @@
             visibility: visible !important;
             z-index: 9999 !important;
         }
+
+        #cardNumber-container, 
+#expirationDate-container, 
+#securityCode-container {
+    height: 48px !important; /* Força a altura de 48px */
+    min-height: 48px !important;
+    background: white;
+}
     </style>
 </head>
 
@@ -1979,4 +1987,5 @@ async function inicializarMercadoPago() {
 </body>
 
 </html>
+
 
