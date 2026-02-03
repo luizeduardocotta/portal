@@ -1322,32 +1322,32 @@
     }
 
     function renderizarCarrinho() {
-    const drawer = document.getElementById('cart-drawer');
-    const overlay = document.getElementById('overlay');
+        const drawer = document.getElementById('cart-drawer');
+        const overlay = document.getElementById('overlay');
 
-    if (state.carrinhoAberto) {
-        drawer.classList.add('open');
-        overlay.classList.add('active');
-    } else {
-        drawer.classList.remove('open');
-        overlay.classList.remove('active');
-    }
+        if (state.carrinhoAberto) {
+            drawer.classList.add('open');
+            overlay.classList.add('active');
+        } else {
+            drawer.classList.remove('open');
+            overlay.classList.remove('active');
+        }
 
-    const itensContainer = document.getElementById('cart-items');
-    const checkoutContainer = document.getElementById('checkout-form');
+        const itensContainer = document.getElementById('cart-items');
+        const checkoutContainer = document.getElementById('checkout-form');
 
-    if (state.carrinho.length === 0) {
-        itensContainer.innerHTML = `
+        if (state.carrinho.length === 0) {
+            itensContainer.innerHTML = `
             <div class="flex flex-col items-center justify-center py-16 text-gray-400">
                 <i data-lucide="shopping-bag" class="w-16 h-16 mb-4"></i>
                 <p>Seu carrinho está vazio</p>
             </div>`;
-        checkoutContainer.innerHTML = '';
-        lucide.createIcons();
-        return;
-    }
+            checkoutContainer.innerHTML = '';
+            lucide.createIcons();
+            return;
+        }
 
-    itensContainer.innerHTML = state.carrinho.map(item => `
+        itensContainer.innerHTML = state.carrinho.map(item => `
         <div class="flex gap-4 p-4 bg-gray-50 rounded-xl mb-2">
             <img src="${item.caminho_imagem_local}" class="w-16 h-16 object-cover rounded-lg" onerror="this.src='https://via.placeholder.com/80x80'">
             <div class="flex-1">
@@ -1362,10 +1362,10 @@
         </div>
     `).join('');
 
-    const subtotal = state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
-    const totalGeral = subtotal + (state.freteSelecionado || 0);
+        const subtotal = state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+        const totalGeral = subtotal + (state.freteSelecionado || 0);
 
-    checkoutContainer.innerHTML = `
+        checkoutContainer.innerHTML = `
     <div class="space-y-4 pt-4 border-t border-gray-100">
         <div class="space-y-2">
             <input type="text" id="nomeCliente" placeholder="Nome Completo" value="${state.usuarioAtual?.nome || ''}"
@@ -1389,23 +1389,28 @@
             <div id="resultadoFrete" class="space-y-2 mt-2"></div>
         </div>
 
-        <form id="form-checkout" class="${state.freteSelecionado > 0 ? '' : 'hidden'} bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
-            <p class="text-xs font-bold text-gray-500 uppercase">Dados do Cartão:</p>
-            <div id="cardNumber-container" class="bg-white border p-3 rounded-xl h-12"></div>
-            <div class="flex gap-2">
-                <div id="expirationDate-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
-                <div id="securityCode-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
-            </div>
-            <input type="text" id="cardholderName" placeholder="Nome como está no cartão" class="w-full border p-3 rounded-xl text-sm">
-            <input type="email" id="cardholderEmail" placeholder="E-mail para recibo" class="w-full border p-3 rounded-xl text-sm">
-            <div class="flex gap-2">
-                <input type="text" id="docNumber" placeholder="CPF do Titular" class="w-full border p-3 rounded-xl text-sm">
-                <select id="installments" class="w-full border p-3 rounded-xl text-sm bg-white"></select>
-            </div>
-            <button type="submit" id="btn-pagar" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold shadow-lg hover:bg-green-700 transition-all">
-                CONFIRMAR PAGAMENTO AGORA
-            </button>
-        </form>
+      
+<form id="form-checkout" class="${state.freteSelecionado > 0 ? '' : 'hidden'} bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
+    <p class="text-xs font-bold text-gray-500 uppercase">Dados do Cartão:</p>
+    
+    <div id="cardNumber-container" class="bg-white border p-3 rounded-xl h-12"></div>
+    <div class="flex gap-2">
+        <div id="expirationDate-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
+        <div id="securityCode-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
+    </div>
+    
+    <input type="text" id="cardholderName" placeholder="Nome como está no cartão" class="w-full border p-3 rounded-xl text-sm">
+    <input type="email" id="cardholderEmail" placeholder="E-mail para recibo" class="w-full border p-3 rounded-xl text-sm">
+    
+    <div class="flex gap-2">
+        <input type="text" id="docNumber" placeholder="CPF do Titular" class="w-full border p-3 rounded-xl text-sm">
+        <select id="installments" class="w-full border p-3 rounded-xl text-sm bg-white"></select>
+    </div>
+
+    <button type="submit" id="btn-pagar" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold shadow-lg hover:bg-green-700 transition-all">
+        CONFIRMAR PAGAMENTO AGORA
+    </button>
+</form>
 
         <div class="bg-gray-50 p-4 rounded-2xl space-y-2 border border-gray-100">
             <div class="flex justify-between text-xs text-gray-500 font-medium italic">
@@ -1424,14 +1429,19 @@
     </div>
     `;
 
-    lucide.createIcons();
+        lucide.createIcons();
 
-    if (state.freteSelecionado > 0) {
-        setTimeout(() => {
-            inicializarMercadoPago();
-        }, 600);
+        if (state.freteSelecionado > 0) {
+            const form = document.getElementById('form-checkout');
+            if (form) form.classList.remove('hidden');
+
+            // Dá 1 segundo para garantir que o navegador "desenhou" os campos brancos na tela
+            setTimeout(() => {
+                inicializarMercadoPago();
+            }, 1000);
+        }
     }
-}
+    
     function mascaraCEP(input) {
         let v = input.value.replace(/\D/g, "");
         v = v.replace(/^(\d{5})(\d)/, "$1-$2");
@@ -1482,39 +1492,50 @@
     }
 
     async function inicializarMercadoPago() {
-        if (!window.MP_PUBLIC_KEY) return;
-
-        // LIMPEZA OBRIGATÓRIA: Destrói o formulário anterior se ele existir
-        if (window.cardForm) {
-            try {
-                window.cardForm.unmount();
-                window.cardForm = null;
-            } catch (e) { console.error("Erro ao limpar MP:", e); }
+        // 1. Verifica se os containers realmente existem no DOM antes de prosseguir
+        const container = document.getElementById("cardNumber-container");
+        if (!container) {
+            console.warn("Aguardando containers do cartão...");
+            return;
         }
 
-        const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
-        const totalVenda = (state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0) + (state.freteSelecionado || 0)).toFixed(2);
+        if (!window.MP_PUBLIC_KEY) return;
 
-        window.cardForm = mp.cardForm({
-            amount: totalVenda.toString(),
-            iframe: true,
-            form: {
-                id: "form-checkout",
-                cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
-                expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
-                securityCode: { id: "securityCode-container", placeholder: "CVV" },
-                cardholderName: { id: "cardholderName" },
-                cardholderEmail: { id: "cardholderEmail" },
-                installments: { id: "installments" },
-                identificationNumber: { id: "docNumber" },
-            },
-            callbacks: {
-                onFormMounted: error => {
-                    if (error) return console.warn("Erro ao montar formulário", error);
-                    console.log("Campos de cartão liberados para digitação!");
+        // 2. Limpa instância anterior para evitar conflitos de 'Context'
+        if (window.cardForm) {
+            try {
+                await window.cardForm.unmount();
+                window.cardForm = null;
+            } catch (e) { console.error("Erro ao limpar:", e); }
+        }
+
+        try {
+            const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
+            const total = (state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0) + (state.freteSelecionado || 0)).toFixed(2);
+
+            window.cardForm = mp.cardForm({
+                amount: total.toString(),
+                iframe: true,
+                form: {
+                    id: "form-checkout",
+                    cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
+                    expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
+                    securityCode: { id: "securityCode-container", placeholder: "CVV" },
+                    cardholderName: { id: "cardholderName" },
+                    cardholderEmail: { id: "cardholderEmail" },
+                    installments: { id: "installments" },
+                    identificationNumber: { id: "docNumber" },
+                },
+                callbacks: {
+                    onFormMounted: error => {
+                        if (error) return console.error("Falha ao montar campos:", error);
+                        console.log("Campos de cartão prontos para digitação!");
+                    }
                 }
-            },
-        });
+            });
+        } catch (err) {
+            console.error("Erro fatal no SDK:", err);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -1937,47 +1958,46 @@
             await carregarDadosLoja();
         }
 
-        // 1. LIMPEZA: Se já existir um formulário ativo, nós o "destruímos"
+        // 1. LIMPEZA CRÍTICA: Se já existir um formulário, desmonta-o
         if (window.cardForm) {
             try {
-                window.cardForm.unmount(); // Remove os iframes antigos da memória
-                window.cardForm = null;    // Limpa a variável
+                await window.cardForm.unmount();
+                window.cardForm = null;
             } catch (e) {
-                console.warn("Aviso ao limpar formulário anterior:", e);
+                console.warn("Aviso ao limpar MP anterior:", e);
             }
         }
 
-        // Pequena pausa para garantir que o DOM renderizou os novos IDs
-        setTimeout(() => {
-            try {
-                const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
+        const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
 
-                const valorTotal = (state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0) + (state.freteSelecionado || 0)).toFixed(2);
+        // Calcula o total atualizado
+        const totalVenda = (state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0) + (state.freteSelecionado || 0)).toFixed(2);
 
-                window.cardForm = mp.cardForm({
-                    amount: valorTotal.toString(),
-                    iframe: true,
-                    form: {
-                        id: "form-checkout",
-                        cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
-                        expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
-                        securityCode: { id: "securityCode-container", placeholder: "CVV" },
-                        cardholderName: { id: "cardholderName" },
-                        cardholderEmail: { id: "cardholderEmail" },
-                        installments: { id: "installments" },
-                        identificationNumber: { id: "docNumber" },
-                    },
-                    callbacks: {
-                        onFormMounted: error => {
-                            if (error) return console.warn("Erro ao montar formulário", error);
-                            console.log("Formulário de pagamento pronto!");
-                        },
-                    },
-                });
-            } catch (err) {
-                console.error("Falha ao iniciar Mercado Pago:", err);
-            }
-        }, 100);
+        window.cardForm = mp.cardForm({
+            amount: totalVenda.toString(),
+            iframe: true,
+            form: {
+                id: "form-checkout",
+                cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
+                expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
+                securityCode: { id: "securityCode-container", placeholder: "CVV" },
+                cardholderName: { id: "cardholderName" },
+                cardholderEmail: { id: "cardholderEmail" },
+                installments: { id: "installments" },
+                identificationNumber: { id: "docNumber" },
+            },
+            callbacks: {
+                onFormMounted: error => {
+                    if (error) return console.warn("Erro ao montar formulário", error);
+                    console.log("Formulário de cartão pronto!");
+                },
+                onSubmit: (event) => {
+                    event.preventDefault();
+                    const cardFormData = window.cardForm.getCardFormData();
+                    processarPagamento(cardFormData);
+                }
+            },
+        });
     }
 
     // Correção na função de Frete para evitar erro 400 (Payload vazio ou zero)
