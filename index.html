@@ -247,8 +247,10 @@
     // Você pega esse ID na tabela 'lojas' do Supabase após cadastrar o cliente
     //Você pega essa Public Key no Mercado Pago do cliente 
     const ID_DA_LOJA = '046a9267-a53c-48a7-8fc5-e0e0ea6998b2';
-    window.MP_PUBLIC_KEY = 'TEST-0850d0e2-3327-4871-beee-603fc40fcede';
+    
 
+
+   
 
     // ============================================
     // 💾 ESTADO DA APLICAÇÃO
@@ -712,109 +714,77 @@
         }
     } // <--- FECHAMENTO DA FUNÇÃO finalizarPedidoComMetodo
 
-    function selecionarPagamento(metodo) {
-        state.metodoPagamento = metodo;
-
-        // Mostra a seção de pagamento que estava com "hidden"
-        document.getElementById('secao-pagamento').classList.remove('hidden');
-
-        if (metodo === 'cartao') {
-            document.getElementById('form-checkout').classList.remove('hidden');
-            if (!window.mpIniciado) {
-                inicializarMercadoPago();
-                window.mpIniciado = true;
-            }
-        } else {
-            // Se for PIX, esconde o form de cartão e mostra o botão de finalizar via Whats
-            document.getElementById('form-checkout').classList.add('hidden');
-            finalizarPedidoComMetodo('pix');
-        }
-    }
+    
 
     // ============================================
     // 💳 PROCESSAMENTO DE PAGAMENTO FINAL
     // ============================================
+async function processarPagamento() {
+    if (!state.freteSelecionado) {
+        alert("Selecione o frete antes de pagar.");
+        return;
+    }
 
-    async function processarPagamento() {
-        // 1. Validações iniciais
-        if (!state.freteSelecionado) {
-            alert("Selecione o frete antes de pagar.");
-            return;
-        }
+    const docNumber = document.getElementById('docNumber').value.replace(/\D/g, '');
+    if (docNumber.length < 11) {
+        alert("Por favor, insira um CPF válido.");
+        return;
+    }
 
-        const docNumber = document.getElementById('docNumber').value;
-        if (docNumber.length < 11) {
-            alert("Por favor, insira um CPF válido.");
-            return;
-        }
+    const btn = document.getElementById('btn-pagar');
+    btn.disabled = true;
+    btn.innerHTML = "⏳ Processando...";
 
-        const btn = document.getElementById('btn-pagar');
-        btn.disabled = true;
-        btn.innerHTML = "⏳ Processando...";
+    try {
+        const cardFormData = window.cardForm.getCardFormData();
+        if (!cardFormData.token) throw new Error("Dados do cartão inválidos.");
 
-        try {
-            // 2. Criar token do cartão via SDK Mercado Pago
-            const formData = await window.cardForm.createCardToken();
+        const subtotal = state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+        const totalVenda = subtotal + state.freteSelecionado;
 
-            if (!formData || !formData.token) {
-                throw new Error("Verifique os dados do cartão.");
-            }
+        const payload = {
+            token: cardFormData.token,
+            installments: Number(cardFormData.installments),
+            payment_method_id: cardFormData.payment_method_id,
+            issuer_id: cardFormData.issuer_id,
+            email: document.getElementById('cardholderEmail').value,
+            docNumber,
+            total: totalVenda,
+            endereco: document.getElementById('enderecoEntrega').value,
+            itens: state.carrinho,
+            loja_id: ID_DA_LOJA
+        };
 
-            // 3. Montar objeto para sua API no Netlify
-            const payload = {
-                token: formData.token,
-                installments: parseInt(document.getElementById('installments').value),
-                payment_method_id: formData.payment_method_id,
-                issuer_id: formData.issuer_id,
-                email: document.getElementById('cardholderEmail').value,
-                docNumber: docNumber,
-                total: (state.total + state.freteSelecionado),
-                endereco: document.getElementById('enderecoEntrega').value,
-                itens: state.carrinho
-            };
-
-            // 4. Chamada para o servidor
-            const response = await fetch("SUA_URL_DA_NETLIFY_FUNCTION_AQUI", {
+        const response = await fetch(
+            "https://frete-correios-api.netlify.app/.netlify/functions/criar-pagamento",
+            {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
-            });
-
-            const result = await response.json();
-
-            if (result.status === 'approved') {
-                alert("Sucesso! Pagamento aprovado.");
-                // Limpar dados e redirecionar
-                state.carrinho = [];
-                renderizarCarrinho();
-                window.location.href = "sucesso.html";
-            } else {
-                throw new Error(result.status_detail || "Pagamento Recusado.");
             }
+        );
 
-        } catch (error) {
-            alert("Erro: " + error.message);
-            btn.disabled = false;
-            btn.innerHTML = "CONFIRMAR PAGAMENTO AGORA";
+        const result = await response.json();
+
+        if (result.status === 'approved') {
+            await salvarPedidoNoSupabase(result.id, payload);
+
+            alert("Pagamento aprovado!");
+            state.carrinho = [];
+            renderizarCarrinho();
+            window.location.href = "sucesso.html?id=" + result.id;
+        } else {
+            throw new Error(result.status_detail || "Pagamento recusado.");
         }
-    }
 
-    async function salvarPedidoNoSupabase(transacaoId, dados) {
-        const { error } = await supabaseClient
-            .from('pedidos')
-            .insert([{
-                transacao_id: transacaoId,
-                loja_id: ID_DA_LOJA,
-                cliente_email: dados.email,
-                total: dados.total,
-                status: 'pago',
-                itens: dados.itens_carrinho,
-                frete_valor: state.freteSelecionado,
-                frete_tipo: state.tipoFrete
-            }]);
-
-        if (error) console.error("Erro ao salvar pedido no banco:", error);
+    } catch (error) {
+        console.error("Erro MP:", error);
+        alert("Erro: " + error.message);
+        btn.disabled = false;
+        btn.innerHTML = "CONFIRMAR PAGAMENTO AGORA";
     }
+}
+
     // ============================================
     // 👨‍💼 PAINEL ADMIN
     // ============================================
@@ -1151,23 +1121,6 @@
         }
     }
 
-    async function carregarDadosLoja() {
-        const { data, error } = await supabaseClient
-            .from('lojas')
-            .select('cep_origem')
-            .eq('id', ID_DA_LOJA)
-            .single();
-
-        if (error) {
-            console.error('Erro ao buscar CEP da loja:', error);
-            return;
-        }
-
-        // 👇 AQUI é onde entra:
-        state.CEP_ORIGEM_LOJA = data.cep_origem;
-
-        console.log("CEP loja carregado:", state.CEP_ORIGEM_LOJA);
-    }
 
 
     async function excluirProduto(id) {
@@ -1428,20 +1381,20 @@
         </div>
     </div>
     `;
+ 
+        lucide.createIcons();  
 
-        lucide.createIcons();
+    // Se o frete já foi escolhido, monta o Mercado Pago
+if (state.freteSelecionado > 0) {
+    setTimeout(() => {
+        inicializarMercadoPago();
+    }, 300);
+}
 
-        if (state.freteSelecionado > 0) {
-            const form = document.getElementById('form-checkout');
-            if (form) form.classList.remove('hidden');
 
-            // Dá 1 segundo para garantir que o navegador "desenhou" os campos brancos na tela
-            setTimeout(() => {
-                inicializarMercadoPago();
-            }, 1000);
-        }
+        
     }
-    
+
     function mascaraCEP(input) {
         let v = input.value.replace(/\D/g, "");
         v = v.replace(/^(\d{5})(\d)/, "$1-$2");
@@ -1478,65 +1431,23 @@
     // ============================================
 
     async function carregarDadosLoja() {
-        const { data, error } = await supabaseClient
-            .from('lojas')
-            .select('*')
-            .eq('id', ID_DA_LOJA)
-            .single();
+    const { data, error } = await supabaseClient
+        .from('lojas')
+        .select('nome, cep_origem, mp_public_key')
+        .eq('id', ID_DA_LOJA)
+        .single();
 
-        if (data) {
-            document.getElementById('nome-loja').textContent = data.nome;
-            // Armazena a chave pública para o Mercado Pago usar
-            window.MP_PUBLIC_KEY = data.mp_public_key;
-        }
+    if (error) {
+        console.error("Erro loja:", error);
+        return;
     }
 
-    async function inicializarMercadoPago() {
-        // 1. Verifica se os containers realmente existem no DOM antes de prosseguir
-        const container = document.getElementById("cardNumber-container");
-        if (!container) {
-            console.warn("Aguardando containers do cartão...");
-            return;
-        }
+    document.getElementById('nome-loja').textContent = data.nome;
+    state.CEP_ORIGEM_LOJA = data.cep_origem;
+    window.MP_PUBLIC_KEY = data.mp_public_key;
+}
 
-        if (!window.MP_PUBLIC_KEY) return;
 
-        // 2. Limpa instância anterior para evitar conflitos de 'Context'
-        if (window.cardForm) {
-            try {
-                await window.cardForm.unmount();
-                window.cardForm = null;
-            } catch (e) { console.error("Erro ao limpar:", e); }
-        }
-
-        try {
-            const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
-            const total = (state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0) + (state.freteSelecionado || 0)).toFixed(2);
-
-            window.cardForm = mp.cardForm({
-                amount: total.toString(),
-                iframe: true,
-                form: {
-                    id: "form-checkout",
-                    cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
-                    expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
-                    securityCode: { id: "securityCode-container", placeholder: "CVV" },
-                    cardholderName: { id: "cardholderName" },
-                    cardholderEmail: { id: "cardholderEmail" },
-                    installments: { id: "installments" },
-                    identificationNumber: { id: "docNumber" },
-                },
-                callbacks: {
-                    onFormMounted: error => {
-                        if (error) return console.error("Falha ao montar campos:", error);
-                        console.log("Campos de cartão prontos para digitação!");
-                    }
-                }
-            });
-        } catch (err) {
-            console.error("Erro fatal no SDK:", err);
-        }
-    }
 
     document.addEventListener('DOMContentLoaded', async () => {
         await inicializarAuth();
@@ -1946,105 +1857,64 @@
 
 
 
-
-
-    // Variável global para o formulário do cartão
-    // Variável global para o formulário do cartão
-    window.cardForm = null;
-    window.mpIniciado = false;
-
-    async function inicializarMercadoPago() {
-        if (!window.MP_PUBLIC_KEY) {
-            await carregarDadosLoja();
-        }
-
-        // 1. LIMPEZA CRÍTICA: Se já existir um formulário, desmonta-o
-        if (window.cardForm) {
-            try {
-                await window.cardForm.unmount();
-                window.cardForm = null;
-            } catch (e) {
-                console.warn("Aviso ao limpar MP anterior:", e);
-            }
-        }
-
-        const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
-
-        // Calcula o total atualizado
-        const totalVenda = (state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0) + (state.freteSelecionado || 0)).toFixed(2);
-
-        window.cardForm = mp.cardForm({
-            amount: totalVenda.toString(),
-            iframe: true,
-            form: {
-                id: "form-checkout",
-                cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
-                expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
-                securityCode: { id: "securityCode-container", placeholder: "CVV" },
-                cardholderName: { id: "cardholderName" },
-                cardholderEmail: { id: "cardholderEmail" },
-                installments: { id: "installments" },
-                identificationNumber: { id: "docNumber" },
-            },
-            callbacks: {
-                onFormMounted: error => {
-                    if (error) return console.warn("Erro ao montar formulário", error);
-                    console.log("Formulário de cartão pronto!");
-                },
-                onSubmit: (event) => {
-                    event.preventDefault();
-                    const cardFormData = window.cardForm.getCardFormData();
-                    processarPagamento(cardFormData);
-                }
-            },
-        });
-    }
-
-    // Correção na função de Frete para evitar erro 400 (Payload vazio ou zero)
-    async function calcularFrete() {
-        const cepInput = document.getElementById('cep');
-        const cepDestino = cepInput ? cepInput.value.replace(/\D/g, '') : "";
-
-        if (cepDestino.length !== 8) {
-            mostrarNotificacao("CEP inválido", "error");
-            return;
-        }
-
-        document.getElementById('freteLoader').classList.remove('hidden');
-
-        const payload = {
-            cep_origem: state.CEP_ORIGEM_LOJA || "30110001", // Fallback para não dar erro 400
-            cep_destino: cepDestino,
-            itens: state.carrinho.map(item => ({
-                peso: Number(item.peso_kg) || 0.3,
-                largura: Number(item.largura_cm) || 11,
-                altura: Number(item.altura_cm) || 11,
-                comprimento: Number(item.comprimento_cm) || 16
-            }))
-        };
-
-        try {
-            const response = await fetch("https://frete-correios-api.netlify.app/.netlify/functions/frete", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-            document.getElementById('freteLoader').classList.add('hidden');
-
-            if (data && data.opcoes) {
-                renderizarOpcoesFrete(data.opcoes);
-            } else {
-                document.getElementById("resultadoFrete").innerHTML = `<p class='text-red-500 text-xs'>Erro: ${data.erro || 'Serviço indisponível'}</p>`;
-            }
-        } catch (err) {
-            console.error("Erro conexão frete:", err);
-            document.getElementById('freteLoader').classList.add('hidden');
-        }
-    }
-
 </script>
+
+<script>
+window.cardForm = null;
+window.mpIniciado = false;
+
+async function inicializarMercadoPago() {
+    if (!window.MP_PUBLIC_KEY) {
+        await carregarDadosLoja();
+    }
+
+    if (!window.MercadoPago) {
+        console.error("SDK do Mercado Pago não carregou");
+        return;
+    }
+
+    if (window.cardForm) {
+        try {
+            await window.cardForm.unmount();
+            window.cardForm = null;
+        } catch (e) {}
+    }
+
+    const mp = new MercadoPago(window.MP_PUBLIC_KEY);
+
+    const totalVenda = (
+        state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0)
+        + (state.freteSelecionado || 0)
+    ).toFixed(2);
+
+    window.cardForm = mp.cardForm({
+        amount: totalVenda.toString(),
+        iframe: true,
+        form: {
+            id: "form-checkout",
+            cardNumber: { id: "cardNumber-container" },
+            expirationDate: { id: "expirationDate-container" },
+            securityCode: { id: "securityCode-container" },
+            cardholderName: { id: "cardholderName" },
+            cardholderEmail: { id: "cardholderEmail" },
+            installments: { id: "installments" },
+            identificationNumber: { id: "docNumber" }
+        },
+        callbacks: {
+            onFormMounted: error => {
+                if (error) return console.error("Erro MP:", error);
+                console.log("Campos do cartão carregados!");
+            },
+            onSubmit: (event) => {
+                event.preventDefault();
+                const data = window.cardForm.getCardFormData();
+                processarPagamento(data);
+            }
+        }
+    });
+}
+</script>
+
 
 <footer class="bg-gray-900 text-white pt-12 pb-6">
     <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 border-b border-gray-800 pb-8">
