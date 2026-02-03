@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedido Realizado com Sucesso!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen p-6">
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
+        <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i data-lucide="check-circle" class="w-12 h-12"></i>
+        </div>
+        
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Pedido Confirmado!</h1>
+        <p class="text-gray-500 mb-6">Obrigado por sua compra. Seu pagamento foi processado com sucesso.</p>
+
+        <div class="bg-gray-50 rounded-2xl p-4 mb-6 text-left">
+            <div class="flex justify-between mb-2">
+                <span class="text-gray-400 text-sm">Número do Pedido:</span>
+                <span id="order-id" class="font-bold text-gray-800">#0000</span>
+            </div>
+            <p class="text-[10px] text-gray-400">Um e-mail de confirmação foi enviado para você.</p>
+        </div>
+
+        <a href="index.html" class="block w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all">
+            Voltar para a Loja
+        </a>
+    </div>
+
+    <script>
+        // Pega o ID do pedido da URL e exibe na tela
+        const urlParams = new URLSearchParams(window.location.search);
+        const pedidoId = urlParams.get('id');
+        if (pedidoId) {
+            document.getElementById('order-id').innerText = `#${pedidoId}`;
+        }
+        lucide.createIcons();
+    </script>
+</body>
+</html>
