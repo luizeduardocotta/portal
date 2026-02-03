@@ -1347,11 +1347,11 @@ async function processarPagamento() {
 <form id="form-checkout" class="${state.freteSelecionado > 0 ? '' : 'hidden'} bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
     <p class="text-xs font-bold text-gray-500 uppercase">Dados do Cartão:</p>
     
-    <div id="cardNumber-container" class="bg-white border p-3 rounded-xl h-12"></div>
-    <div class="flex gap-2">
-        <div id="expirationDate-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
-        <div id="securityCode-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
-    </div>
+ <div id="cardNumber-container" class="bg-white border p-3 rounded-xl h-12"></div>
+<div class="flex gap-2">
+    <div id="expirationDate-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
+    <div id="securityCode-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
+</div>
     
     <input type="text" id="cardholderName" placeholder="Nome como está no cartão" class="w-full border p-3 rounded-xl text-sm">
     <input type="email" id="cardholderEmail" placeholder="E-mail para recibo" class="w-full border p-3 rounded-xl text-sm">
@@ -1870,23 +1870,24 @@ window.cardForm = null;
 window.mpIniciado = false;
 
 async function inicializarMercadoPago() {
-    if (!window.MP_PUBLIC_KEY) {
-        await carregarDadosLoja();
-    }
+    if (!window.MP_PUBLIC_KEY) return;
 
-    if (!window.MercadoPago) {
-        console.error("SDK do Mercado Pago não carregou");
-        return;
-    }
-
+    // --- ADICIONE ESTE BLOCO AQUI ---
     if (window.cardForm) {
         try {
             await window.cardForm.unmount();
             window.cardForm = null;
-        } catch (e) {}
+            // Limpa o conteúdo dos containers para garantir que fiquem vazios
+            document.getElementById("cardNumber-container").innerHTML = "";
+            document.getElementById("expirationDate-container").innerHTML = "";
+            document.getElementById("securityCode-container").innerHTML = "";
+        } catch (e) {
+            console.warn("Aviso ao limpar MP:", e);
+        }
     }
 
-    const mp = new MercadoPago(window.MP_PUBLIC_KEY);
+    const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
+   
 
     const totalVenda = (
         state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0)
