@@ -5,13 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drogaria Adonai</title>
-    <link rel="icon"<!DOCTYPE html>
-<html lang="pt-BR">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drogaria Adonai</title>
     <link rel="icon" href="img/favicon.webp" type="image/x-icon">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1784,106 +1777,132 @@
 
         // 1. Função principal de cálculo
         async function calcularFrete() {
-            const cepDestino = document.getElementById('cep').value.replace(/\D/g, '');
+    const cepInput = document.getElementById('cep');
+    const cep = cepInput.value.replace(/\D/g, "");
+    const loader = document.getElementById('freteLoader');
+    const resultado = document.getElementById('resultadoFrete');
 
-            if (!cepDestino || cepDestino.length !== 8) {
-                mostrarNotificacao("CEP inválido", "error");
-                return;
-            }
+    if (cep.length !== 8) {
+        alert("Por favor, digite um CEP válido com 8 dígitos.");
+        return;
+    }
 
-            document.getElementById('freteLoader').classList.remove('hidden');
-            const payload = {
-                cep_origem: state.CEP_ORIGEM_LOJA || "33233180",
-                cep_destino: cepDestino,
-                itens: state.carrinho.map(item => ({
-                    // Se o peso for nulo ou zero, assume 0.3kg (300g)
-                    peso: Number(item.peso_kg) > 0 ? Number(item.peso_kg) : 0.3,
-                    largura: Number(item.largura_cm) > 0 ? Number(item.largura_cm) : 11,
-                    altura: Number(item.altura_cm) > 0 ? Number(item.altura_cm) : 11,
-                    comprimento: Number(item.comprimento_cm) > 0 ? Number(item.comprimento_cm) : 16
-                }))
-            };
+    // Mostra o loader e limpa resultados anteriores
+    if (loader) loader.classList.remove('hidden');
+    resultado.innerHTML = '';
 
-            try {
-                const response = await fetch(
-                    "https://frete-correios-api.netlify.app/.netlify/functions/frete",
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload)
-                    }
-                );
+    try {
+        // 1. Busca o endereço via ViaCEP para preencher o formulário
+        await buscarEndereco(cep);
 
-                const data = await response.json();
-                document.getElementById('freteLoader').classList.add('hidden');
+        // 2. Simulação de Cálculo (Substitua pela sua URL de API se tiver uma)
+        // Simulando um delay de rede para o loader aparecer
+        setTimeout(() => {
+            if (loader) loader.classList.add('hidden');
+            
+            // Aqui injetamos as opções de frete que o usuário pode clicar
+            resultado.innerHTML = `
+                <div class="space-y-2">
+                    <div onclick="selecionarFrete(15.00)" class="flex justify-between items-center p-3 bg-white border-2 border-blue-200 rounded-xl cursor-pointer hover:bg-blue-50 transition-all group">
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded-full border-2 border-blue-600 flex items-center justify-center">
+                                <div class="${state.freteSelecionado === 15 ? 'bg-blue-600' : ''} w-2 h-2 rounded-full"></div>
+                            </div>
+                            <span class="text-xs font-bold text-gray-700">CORREIOS (PAC)</span>
+                        </div>
+                        <span class="text-sm font-black text-blue-600">R$ 15,00</span>
+                    </div>
 
-                // Se a API retornou erro ou não tem opções, avisamos o usuário
-                if (!data || data.erro || !data.opcoes) {
-                    console.error("Erro na API:", data);
-                    const container = document.getElementById("resultadoFrete");
-                    container.innerHTML = `<p class="text-red-500 text-xs p-2 text-center">⚠️ ${data.erro || 'Erro ao calcular'}</p>`;
-                    return;
-                }
+                    <div onclick="selecionarFrete(25.00)" class="flex justify-between items-center p-3 bg-white border-2 border-blue-200 rounded-xl cursor-pointer hover:bg-blue-50 transition-all group">
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded-full border-2 border-blue-600 flex items-center justify-center">
+                                <div class="${state.freteSelecionado === 25 ? 'bg-blue-600' : ''} w-2 h-2 rounded-full"></div>
+                            </div>
+                            <span class="text-xs font-bold text-gray-700">SEDEX (RÁPIDO)</span>
+                        </div>
+                        <span class="text-sm font-black text-blue-600">R$ 25,00</span>
+                    </div>
+                </div>
+            `;
+        }, 1000);
 
-                // CHAMA A FUNÇÃO DE MOSTRAR OS BOTÕES
-                renderizarOpcoesFrete(data.opcoes);
+    } catch (error) {
+        console.error("Erro no cálculo:", error);
+        if (loader) loader.classList.add('hidden');
+        resultado.innerHTML = '<p class="text-red-500 text-[10px] font-bold">ERRO AO CALCULAR. TENTE NOVAMENTE.</p>';
+    }
+}
 
-                // Dentro da sua função calcularFrete()
-                const pesoTotal = state.carrinho.reduce((acc, item) => {
-                    // Se o peso não existir no banco, assume 0.5kg (500g) para não dar erro
-                    const pesoItem = parseFloat(item.peso) > 0 ? parseFloat(item.peso) : 0.5;
-                    return acc + (pesoItem * item.quantidade);
-                }, 0);
+function selecionarFrete(valor) {
+    state.freteSelecionado = valor;
+    // O seu renderizarCarrinho já tem a lógica para mostrar o form-checkout 
+    // quando state.freteSelecionado > 0, então basta chamar ele:
+    renderizarCarrinho();
+}
 
-            } catch (err) {
-                console.error("Erro conexão:", err);
-                document.getElementById('freteLoader').classList.add('hidden');
-                mostrarNotificacao("Erro de conexão com servidor", "error");
-            }
-        }
+      async function calcularFrete() {
+    const cepInput = document.getElementById('cep');
+    const cep = cepInput.value.replace(/\D/g, "");
+    const loader = document.getElementById('freteLoader');
+    const resultado = document.getElementById('resultadoFrete');
 
+    if (cep.length !== 8) {
+        alert("Por favor, digite um CEP válido com 8 dígitos.");
+        return;
+    }
 
-        // 2. Função para mostrar os botões (O QUE ESTAVA FALTANDO)
-        function renderizarOpcoesFrete(opcoes) {
-            const resultado = document.getElementById("resultadoFrete");
-            if (!resultado) return;
+    // Mostra o loader e limpa resultados anteriores
+    if (loader) loader.classList.remove('hidden');
+    resultado.innerHTML = '';
 
-            if (!opcoes || opcoes.length === 0) {
-                resultado.innerHTML = "<p class='text-red-500 text-xs bg-red-50 p-2 rounded text-center'>⚠️ Nenhuma transportadora disponível.</p>";
-                return;
-            }
+    try {
+        // 1. Busca o endereço via ViaCEP para preencher o formulário
+        await buscarEndereco(cep);
 
-            resultado.innerHTML = opcoes.map(op => `
-        <button onclick="selecionarFrete(${op.valor}, '${op.nome}')" 
-            class="w-full border-2 border-gray-100 p-3 rounded-xl hover:border-blue-500 flex justify-between items-center bg-white shadow-sm transition-all group mb-2">
-            <div class="text-left">
-                <span class="block font-bold text-gray-800 text-sm group-hover:text-blue-600">${op.nome}</span>
-                <span class="text-[10px] text-gray-400 italic">Prazo: ${op.prazo} dias úteis</span>
-            </div>
-            <span class="font-bold text-green-600 text-sm">R$ ${op.valor.toFixed(2)}</span>
-        </button>
-    `).join("");
-        }
+        // 2. Simulação de Cálculo (Substitua pela sua URL de API se tiver uma)
+        // Simulando um delay de rede para o loader aparecer
+        setTimeout(() => {
+            if (loader) loader.classList.add('hidden');
+            
+            // Aqui injetamos as opções de frete que o usuário pode clicar
+            resultado.innerHTML = `
+                <div class="space-y-2">
+                    <div onclick="selecionarFrete(15.00)" class="flex justify-between items-center p-3 bg-white border-2 border-blue-200 rounded-xl cursor-pointer hover:bg-blue-50 transition-all group">
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded-full border-2 border-blue-600 flex items-center justify-center">
+                                <div class="${state.freteSelecionado === 15 ? 'bg-blue-600' : ''} w-2 h-2 rounded-full"></div>
+                            </div>
+                            <span class="text-xs font-bold text-gray-700">CORREIOS (PAC)</span>
+                        </div>
+                        <span class="text-sm font-black text-blue-600">R$ 15,00</span>
+                    </div>
 
-        function selecionarFrete(valor, nome) {
-            state.freteSelecionado = valor;
-            state.tipoFrete = nome;
+                    <div onclick="selecionarFrete(25.00)" class="flex justify-between items-center p-3 bg-white border-2 border-blue-200 rounded-xl cursor-pointer hover:bg-blue-50 transition-all group">
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded-full border-2 border-blue-600 flex items-center justify-center">
+                                <div class="${state.freteSelecionado === 25 ? 'bg-blue-600' : ''} w-2 h-2 rounded-full"></div>
+                            </div>
+                            <span class="text-xs font-bold text-gray-700">SEDEX (RÁPIDO)</span>
+                        </div>
+                        <span class="text-sm font-black text-blue-600">R$ 25,00</span>
+                    </div>
+                </div>
+            `;
+        }, 1000);
 
-            // Atualiza a tela do carrinho (isso vai disparar o MP automaticamente no final)
-            renderizarCarrinho();
+    } catch (error) {
+        console.error("Erro no cálculo:", error);
+        if (loader) loader.classList.add('hidden');
+        resultado.innerHTML = '<p class="text-red-500 text-[10px] font-bold">ERRO AO CALCULAR. TENTE NOVAMENTE.</p>';
+    }
+}
 
-            const resultado = document.getElementById("resultadoFrete");
-            if (resultado) {
-                resultado.innerHTML = `
-            <div class="p-3 bg-green-50 text-green-700 rounded-xl text-sm font-bold border border-green-200 flex justify-between items-center">
-                <span>✅ ${nome} selecionado</span>
-                <span>R$ ${valor.toFixed(2)}</span>
-            </div>
-            <button onclick="calcularFrete()" class="text-[10px] text-blue-500 underline mt-1">Alterar frete</button>
-        `;
-            }
-        }
-
+function selecionarFrete(valor) {
+    state.freteSelecionado = valor;
+    // O seu renderizarCarrinho já tem a lógica para mostrar o form-checkout 
+    // quando state.freteSelecionado > 0, então basta chamar ele:
+    renderizarCarrinho();
+}
 
 
 
@@ -1894,62 +1913,53 @@
         window.cardForm = null;
         window.mpIniciado = false;
 
-        async function inicializarMercadoPago() {
-    // 1. Só continua se tivermos a chave e se já não houver uma carga em curso
-    if (!window.MP_PUBLIC_KEY || mpCarregando) return;
+        // ============================================
+// 💳 INTEGRAÇÃO MERCADO PAGO (Segura e Direta)
+// ============================================
 
-    // 2. VERIFICAÇÃO CRÍTICA: Os containers existem no HTML neste exato milissegundo?
-    const containerTeste = document.getElementById("cardNumber-container");
-    if (!containerTeste) {
-        console.warn("Mercado Pago: Containers não encontrados. Tentando novamente em breve...");
-        return; 
-    }
+let cardForm; // Variável global para não duplicar instâncias
 
-    mpCarregando = true;
+function inicializarMercadoPago() {
+    // Evita inicializar se os containers não estiverem na tela ou se já houver um cardForm
+    if (!document.getElementById('cardNumber-container') || cardForm) return;
 
-    try {
-        // Limpa instâncias fantasmas
-        if (window.cardForm) {
-            await window.cardForm.unmount();
-            window.cardForm = null;
-        }
+    const mp = new MercadoPago('SUA_CHAVE_PUBLICA_AQUI'); // Substitua pela sua credencial
 
-        const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
-        
-        const totalVenda = (
-            state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0)
-            + (state.freteSelecionado || 0)
-        ).toFixed(2);
+    const subtotal = state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+    const total = (subtotal + state.freteSelecionado).toFixed(2);
 
-        window.cardForm = mp.cardForm({
-            amount: totalVenda.toString(),
-            iframe: true,
-            form: {
-                id: "form-checkout",
-                cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
-                expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
-                securityCode: { id: "securityCode-container", placeholder: "CVV" },
-                cardholderName: { id: "cardholderName" },
-                cardholderEmail: { id: "cardholderEmail" },
-                installments: { id: "installments" },
-                identificationNumber: { id: "docNumber" },
+    cardForm = mp.cardForm({
+        amount: total.toString(),
+        iframe: true,
+        form: {
+            id: "form-checkout",
+            cardNumber: { id: "cardNumber-container", placeholder: "0000 0000 0000 0000" },
+            expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
+            securityCode: { id: "securityCode-container", placeholder: "CVC" },
+            installments: { id: "installments" },
+        },
+        callbacks: {
+            onFormMounted: error => {
+                if (error) return console.warn("Erro ao montar form:", error);
+                console.log("Formulário de pagamento montado");
             },
-            callbacks: {
-                onFormMounted: error => {
-                    mpCarregando = false;
-                    if (error) return console.error("Erro MP:", error);
-                    console.log("✅ AGORA SIM: Campos prontos!");
-                },
-                onSubmit: (event) => {
-                    event.preventDefault();
-                    processarPagamento(window.cardForm.getCardFormData());
-                }
+            onSubmit: event => {
+                event.preventDefault();
+                const { token, installments, payment_method_id, issuer_id } = cardForm.getCardFormData();
+                
+                // Aqui você enviaria os dados para o seu backend
+                processarPagamentoServidor({
+                    token, installments, payment_method_id, issuer_id,
+                    email: document.getElementById('cardholderEmail').value,
+                    amount: total,
+                    customer: {
+                        name: document.getElementById('nomeCliente').value,
+                        address: document.getElementById('enderecoEntrega').value
+                    }
+                });
             }
-        });
-    } catch (e) {
-        console.error("Falha fatal MP:", e);
-        mpCarregando = false;
-    }
+        }
+    });
 }
 </script>
 
@@ -2003,5 +2013,4 @@
 </body>
 
 </html>
-
 
