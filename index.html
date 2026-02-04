@@ -300,12 +300,20 @@
     }
 
     function filtrarProdutos() {
-        return state.produtos.filter(produto => {
+        console.log("🔎 Filtrando produtos...");
+        console.log("📂 Categoria ativa:", state.categoriaAtiva);
+        console.log("🔍 Texto de busca:", state.buscaTexto);
+        console.log("📦 Total produtos no state:", state.produtos.length);
+        
+        const filtered = state.produtos.filter(produto => {
             const matchCategoria = state.categoriaAtiva === 'Todos' || produto.categoria === state.categoriaAtiva;
             const matchBusca = produto.nome.toLowerCase().includes(state.buscaTexto.toLowerCase()) ||
                 (produto.descricao && produto.descricao.toLowerCase().includes(state.buscaTexto.toLowerCase()));
             return matchCategoria && matchBusca;
         });
+        
+        console.log("✅ Produtos após filtro:", filtered.length);
+        return filtered;
     }
 
     function calcularSubtotal() {
@@ -352,8 +360,8 @@
     // ============================================
 
     async function inicializarAuth() {
-        // Carrega os produtos primeiro, independente de quem está logado
-        carregarProdutos();
+        // Carrega os dados da loja e produtos primeiro, independente de login
+        await carregarDadosLoja();
 
         const { data: { user }, error } = await supabaseClient.auth.getUser();
 
@@ -365,6 +373,12 @@
             atualizarInterfaceUsuario();
         }
     }
+
+    // Inicializa a aplicação quando a página carregar
+    window.addEventListener('DOMContentLoaded', () => {
+        inicializarAuth();
+        lucide.createIcons();
+    });
 
 
     async function verificarAdmin() {
@@ -437,6 +451,9 @@
         const adminPanel = document.getElementById('admin-panel');
         const lojaView = document.getElementById('loja-view');
 
+        // Verificações de segurança - se elementos não existem, retorna
+        if (!btnLogin || !btnLogout) return;
+
         if (state.usuarioAtual) {
             // Pega o primeiro nome e o whatsapp do estado
             const primeiroNome = (state.usuarioAtual.nome || 'Usuário').split(' ')[0];
@@ -444,43 +461,52 @@
             const telefoneFormatado = formatarTelefone(state.usuarioAtual.whatsapp);
 
             // HTML padronizado: Nome em destaque e telefone pequeno abaixo
-            userDisplay.innerHTML = `
-               <div class="flex flex-col items-end mr-3 leading-tight">
-                <span class="text-sm font-bold text-gray-900">${primeiroNome}</span>
-                <span class="text-[10px] text-green-600 font-medium">${telefoneFormatado}</span>
-               </div>
-               `;
+            if (userDisplay) {
+                userDisplay.innerHTML = `
+                   <div class="flex flex-col items-end mr-3 leading-tight">
+                    <span class="text-sm font-bold text-gray-900">${primeiroNome}</span>
+                    <span class="text-[10px] text-green-600 font-medium">${telefoneFormatado}</span>
+                   </div>
+                   `;
+            }
 
             btnLogin.classList.add('hidden');
             btnLogout.classList.remove('hidden');
 
             // Lógica do Painel Admin
             if (state.isAdmin) {
-                adminPanel.classList.add('active');
-                lojaView.classList.add('hidden');
+                if (adminPanel) adminPanel.classList.add('active');
+                if (lojaView) lojaView.classList.add('hidden');
                 carregarPedidosAdmin();
                 carregarProdutosAdmin();
             } else {
-                adminPanel.classList.remove('active');
-                lojaView.classList.remove('hidden');
+                if (adminPanel) adminPanel.classList.remove('active');
+                if (lojaView) lojaView.classList.remove('hidden');
             }
         } else {
             // Caso não esteja logado
-            userDisplay.innerHTML = '<span class="text-sm font-medium text-gray-400">Visitante</span>';
+            if (userDisplay) {
+                userDisplay.innerHTML = '<span class="text-sm font-medium text-gray-400">Visitante</span>';
+            }
             btnLogin.classList.remove('hidden');
             btnLogout.classList.add('hidden');
-            adminPanel.classList.remove('active');
-            lojaView.classList.remove('hidden');
+            if (adminPanel) adminPanel.classList.remove('active');
+            if (lojaView) lojaView.classList.remove('hidden');
         }
     }
     function toggleAuthMode() {
         state.modoAuth = state.modoAuth === 'login' ? 'cadastro' : 'login';
         const isLogin = state.modoAuth === 'login';
 
-        document.getElementById('auth-title').textContent = isLogin ? 'Login' : 'Criar Conta';
-        document.getElementById('cadastro-fields').style.display = isLogin ? 'none' : 'block';
-        document.getElementById('btn-auth-submit').textContent = isLogin ? 'Entrar' : 'Cadastrar';
-        document.getElementById('btn-toggle-auth').textContent = isLogin ? 'Criar Conta' : 'Já tenho conta';
+        const title = document.getElementById('auth-title');
+        const cadastroFields = document.getElementById('cadastro-fields');
+        const btnSubmit = document.getElementById('btn-auth-submit');
+        const btnToggle = document.getElementById('btn-toggle-auth');
+
+        if (title) title.textContent = isLogin ? 'Login' : 'Criar Conta';
+        if (cadastroFields) cadastroFields.style.display = isLogin ? 'none' : 'block';
+        if (btnSubmit) btnSubmit.textContent = isLogin ? 'Entrar' : 'Cadastrar';
+        if (btnToggle) btnToggle.textContent = isLogin ? 'Criar Conta' : 'Já tenho conta';
     }
 
     async function submitAuth(event) {
@@ -597,20 +623,30 @@
     // ============================================
 
     async function carregarProdutos() {
+        console.log("🔍 Iniciando carregamento de produtos...");
+        console.log("🏪 Loja ID:", ID_DA_LOJA);
+        
         try {
             const { data: produtos, error } = await supabaseClient
                 .from('produtos')
                 .select('*')
-                .eq('loja_id', ID_DA_LOJA) // O problema está aqui, deve ser exatamente assim
-                .eq('ativo', true)
-                .order('id', { ascending: false });
+                .eq('loja_id', ID_DA_LOJA);
 
-            if (error) throw error;
+            console.log("📦 Produtos retornados:", produtos);
+            console.log("❌ Erro (se houver):", error);
+
+            if (error) {
+                console.error("❌ ERRO ao buscar produtos:", error);
+                throw error;
+            }
 
             state.produtos = produtos || [];
+            console.log("✅ Produtos no state:", state.produtos.length);
+            
             renderizar();
         } catch (error) {
-            console.error('Erro ao carregar produtos:', error.message);
+            console.error('💥 Erro ao carregar produtos:', error.message);
+            console.error('Stack:', error);
         }
     }
 
@@ -1244,10 +1280,19 @@
     }
 
     function renderizarProdutos() {
+        console.log("🎨 Renderizando produtos...");
+        
         const container = document.getElementById('produtos');
+        if (!container) {
+            console.error("❌ Container 'produtos' não encontrado!");
+            return;
+        }
+        
         const produtos = filtrarProdutos();
+        console.log("📦 Produtos filtrados:", produtos.length);
 
         if (produtos.length === 0) {
+            console.warn("⚠️ Nenhum produto para exibir");
             container.innerHTML = `
             <div class="col-span-full text-center py-16">
                 <i data-lucide="package-x" class="w-16 h-16 mx-auto text-gray-300 mb-4"></i>
@@ -1258,6 +1303,7 @@
             return;
         }
 
+        console.log("✅ Renderizando", produtos.length, "produtos");
         container.innerHTML = produtos.map(produto => {
             const esgotado = produto.estoque <= 0;
 
@@ -1458,6 +1504,8 @@
 
         function renderizarBadgeCarrinho() {
             const badge = document.getElementById('cart-badge');
+            if (!badge) return; // Retorna se o elemento não existir
+            
             const totalItens = state.carrinho.reduce((acc, item) => acc + item.quantidade, 0);
 
             if (totalItens > 0) {
@@ -1500,7 +1548,8 @@
                 }
 
                 // Garante o preenchimento dos dados da loja
-                document.getElementById('nome-loja').textContent = data.nome_loja || data.nome;
+                const nomeLoja = document.getElementById('nome-loja');
+                if (nomeLoja) nomeLoja.textContent = data.nome_loja || data.nome;
                 state.CEP_ORIGEM_LOJA = data.cep_origem;
                 window.MP_PUBLIC_KEY = data.mp_public_key;
 
@@ -1784,8 +1833,11 @@
 </div>
 
 <script>
-        document.getElementById('logo-loja').src = CONFIG.logo;
-        document.getElementById('nome-loja').textContent = CONFIG.nomeLoja;
+        const logoLoja = document.getElementById('logo-loja');
+        const nomeLoja = document.getElementById('nome-loja');
+        
+        if (logoLoja) logoLoja.src = CONFIG.logo;
+        if (nomeLoja) nomeLoja.textContent = CONFIG.nomeLoja;
 </script>
 
 
@@ -2041,6 +2093,7 @@
                 class="text-blue-400 hover:underline">Avant Digital</a>
         </p>
     </div>
+    
 </footer>
 
 <script>
