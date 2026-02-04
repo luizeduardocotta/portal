@@ -231,17 +231,26 @@
         chavePix: "57.066.020/0001-82", // Adicione esta linha
         adminEmail: "luizavantdigital@gmail.com", // Email do administrador
         
-        // 🌐 URL DAS FUNÇÕES NETLIFY
-        // Opção 1: Deixe vazio para auto-detectar (funciona se o site estiver no Netlify)
-        // Opção 2: Configure manualmente se estiver em domínio próprio
-        urlFuncoes: "" // Ex: "https://seu-site.netlify.app" ou deixe ""
+        // 🌐 URL DAS FUNÇÕES NETLIFY - CONFIGURE AQUI!
+        // 
+        // ⚠️ IMPORTANTE: Para testar localmente, configure esta URL manualmente:
+        // urlFuncoes: "https://seu-site-no-netlify.netlify.app"
+        //
+        // Deixe vazio ("") apenas para produção no Netlify
+        urlFuncoes: "https://frete-correios-api.netlify.app" // 👈 CONFIGURE SUA URL NETLIFY AQUI
     };
 
-    // Auto-detecta URL das funções se não configurado
-    const BASE_URL_FUNCOES = CONFIG.urlFuncoes || 
-        (window.location.hostname.includes('netlify.app') 
-            ? window.location.origin 
-            : 'https://frete-correios-api.netlify.app'); // URL padrão de fallback
+    // Auto-detecta URL das funções
+    const BASE_URL_FUNCOES = CONFIG.urlFuncoes || window.location.origin;
+    
+    // Aviso se estiver testando localmente sem configurar URL
+    if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+        && !CONFIG.urlFuncoes) {
+        console.warn("⚠️ ATENÇÃO: Você está testando localmente mas não configurou a URL do Netlify!");
+        console.warn("Configure CONFIG.urlFuncoes = 'https://seu-site.netlify.app' no arquivo.");
+    }
+    
+    console.log("🌐 URL das funções Netlify:", BASE_URL_FUNCOES);
 
     let FRETE_ATUAL = 0; // valor calculado na API
 
