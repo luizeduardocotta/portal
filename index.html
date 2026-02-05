@@ -229,19 +229,8 @@
         logo: "img/logo.webp",
         // valorFrete: 15.00, QUANDO QUISER FRETE FIXO COLOCAR ESSA LINHA ON
         chavePix: "57.066.020/0001-82", // Adicione esta linha
-        adminEmail: "luizavantdigital@gmail.com", // Email do administrador
-        
-        // 🌐 URL DAS FUNÇÕES NETLIFY
-        // Opção 1: Deixe vazio para auto-detectar (funciona se o site estiver no Netlify)
-        // Opção 2: Configure manualmente se estiver em domínio próprio
-        urlFuncoes: "" // Ex: "https://seu-site.netlify.app" ou deixe ""
+        adminEmail: "luizavantdigital@gmail.com" // Email do administrador
     };
-
-    // Auto-detecta URL das funções se não configurado
-    const BASE_URL_FUNCOES = CONFIG.urlFuncoes || 
-        (window.location.hostname.includes('netlify.app') 
-            ? window.location.origin 
-            : 'https://frete-correios-api.netlify.app'); // URL padrão de fallback
 
     let FRETE_ATUAL = 0; // valor calculado na API
 
@@ -371,8 +360,8 @@
     // ============================================
 
     async function inicializarAuth() {
-        // Carrega os dados da loja e produtos primeiro, independente de login
-        await carregarDadosLoja();
+        // Carrega os produtos primeiro, independente de quem está logado
+        carregarProdutos();
 
         const { data: { user }, error } = await supabaseClient.auth.getUser();
 
@@ -384,12 +373,6 @@
             atualizarInterfaceUsuario();
         }
     }
-
-    // Inicializa a aplicação quando a página carregar
-    window.addEventListener('DOMContentLoaded', () => {
-        inicializarAuth();
-        lucide.createIcons();
-    });
 
 
     async function verificarAdmin() {
@@ -795,10 +778,24 @@
         btn.innerHTML = "⏳ Processando...";
 
         try {
-            const cardFormData = window.cardForm.getCardFormData();
-            console.log("🎫 Card Form Data:", cardFormData);
+            console.log("🔍 Verificando cardForm:", window.cardForm);
             
-            if (!cardFormData.token) throw new Error("Dados do cartão inválidos.");
+            if (!window.cardForm) {
+                throw new Error("Formulário do Mercado Pago não foi inicializado");
+            }
+
+            let cardFormData;
+            try {
+                cardFormData = await window.cardForm.getCardFormData();
+                console.log("🎫 Card Form Data obtido:", cardFormData);
+            } catch (cardError) {
+                console.error("❌ Erro ao obter dados do cartão:", cardError);
+                throw new Error("Verifique os dados do cartão. " + (cardError.message || "Erro desconhecido"));
+            }
+            
+            if (!cardFormData || !cardFormData.token) {
+                throw new Error("Token do cartão não foi gerado. Verifique os dados.");
+            }
 
             const subtotal = state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
             const totalVenda = subtotal + state.freteSelecionado;
@@ -816,9 +813,8 @@
 
             console.log("📤 Enviando para Netlify:", payload);
 
-            // URL da sua função Netlify
             const response = await fetch(
-                `${BASE_URL_FUNCOES}/.netlify/functions/criar-pagamento`,
+                "https://frete-correios-api.netlify.app/.netlify/functions/criar-pagamento",
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -837,100 +833,38 @@
             const result = await response.json();
             console.log("📦 Resposta do Mercado Pago:", result);
 
-            // Se houve erro retornado pela API
-            if (result.erro) {
-                throw new Error(result.erro);
-            }
-
-            // Verifica status do pagamento
             if (result.status === 'approved') {
-                // Preparar dados do pedido
-                const dadosPedido = {
-                    loja_id: ID_DA_LOJA,
-                    user_id: state.usuarioAtual?.id || null,
-                    valor_total: totalVenda,
-                    status: 'Pago',
-                    metodo_pagamento: 'cartao_credito',
-                    items: state.carrinho,
-                    payment_id: result.id,
-                    dados_pagamento: {
-                        payment_method_id: cardFormData.payment_method_id,
-                        installments: Number(cardFormData.installments),
-                        status: result.status,
-                        status_detail: result.status_detail
-                    },
-                    dados_entrega: {
-                        nome: document.getElementById('nomeCliente')?.value || state.usuarioAtual?.nome,
-                        whatsapp: document.getElementById('telCliente')?.value || state.usuarioAtual?.whatsapp,
-                        endereco: document.getElementById('enderecoEntrega')?.value,
-                        tipo_frete: state.tipoFrete,
-                        valor_frete: state.freteSelecionado
-                    }
-                };
-
                 // Salvar pedido no Supabase
                 const { data: pedido, error: errorPedido } = await supabaseClient
                     .from('pedidos')
-                    .insert(dadosPedido)
+                    .insert({
+                        loja_id: ID_DA_LOJA,
+                        user_id: state.usuarioLogado?.id || null,
+                        valor_total: totalVenda,
+                        status: 'pago',
+                        metodo_pagamento: 'credito',
+                        items: state.carrinho,
+                        payment_id: result.id
+                    })
                     .select()
                     .single();
 
                 if (errorPedido) {
                     console.error("Erro ao salvar pedido:", errorPedido);
-                    throw new Error("Erro ao salvar pedido: " + errorPedido.message);
                 }
 
                 console.log("✅ Pagamento aprovado! ID:", result.id);
                 mostrarNotificacao("✅ Pagamento aprovado!", "success");
-                
-                // Limpar carrinho
                 state.carrinho = [];
-                state.freteSelecionado = 0;
-                state.tipoFrete = null;
-                
                 renderizarCarrinho();
                 atualizarBadge();
-                
-                // Redirecionar para página de sucesso
-                setTimeout(() => window.location.href = `sucesso.html?id=${pedido.id}`, 1000);
-                
-            } else if (result.status === 'pending') {
-                // Pagamento pendente
-                mostrarNotificacao("⏳ Pagamento pendente de aprovação", "info");
-                
-                // Salvar como pendente
-                const dadosPedido = {
-                    loja_id: ID_DA_LOJA,
-                    user_id: state.usuarioAtual?.id || null,
-                    valor_total: totalVenda,
-                    status: 'Pendente',
-                    metodo_pagamento: 'cartao_credito',
-                    items: state.carrinho,
-                    payment_id: result.id,
-                    dados_pagamento: {
-                        payment_method_id: cardFormData.payment_method_id,
-                        installments: Number(cardFormData.installments),
-                        status: result.status,
-                        status_detail: result.status_detail
-                    },
-                    dados_entrega: {
-                        nome: document.getElementById('nomeCliente')?.value || state.usuarioAtual?.nome,
-                        whatsapp: document.getElementById('telCliente')?.value || state.usuarioAtual?.whatsapp,
-                        endereco: document.getElementById('enderecoEntrega')?.value,
-                        tipo_frete: state.tipoFrete,
-                        valor_frete: state.freteSelecionado
-                    }
-                };
-
-                await supabaseClient.from('pedidos').insert(dadosPedido);
-                
-                state.carrinho = [];
-                renderizarCarrinho();
-                setTimeout(() => toggleCarrinho(), 1000);
-                
+                setTimeout(() => window.location.href = `sucesso.html?id=${result.id}`, 1000);
+            } else if (result.erro) {
+                console.error("❌ Erro na resposta:", result.erro);
+                throw new Error(result.erro);
             } else {
-                // Pagamento rejeitado
-                throw new Error(result.status_detail || "Pagamento recusado. Verifique os dados do cartão.");
+                console.error("❌ Pagamento não aprovado:", result.status, result.status_detail);
+                throw new Error(result.status_detail || "Pagamento recusado.");
             }
 
         } catch (error) {
@@ -954,7 +888,7 @@
                 perfis (nome, whatsapp)
             `)
                 .eq('loja_id', ID_DA_LOJA)
-                .order('created_at', { ascending: false });
+                .order('data', { ascending: false });
 
             if (error) {
                 console.error("Erro ao buscar pedidos:", error);
@@ -970,63 +904,37 @@
 
             container.innerHTML = `
             <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+                <table class="w-full">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-3 py-2 text-left">ID</th>
-                            <th class="px-3 py-2 text-left">Cliente</th>
-                            <th class="px-3 py-2 text-left">WhatsApp</th>
-                            <th class="px-3 py-2 text-left">Endereço</th>
-                            <th class="px-3 py-2 text-left">Itens</th>
-                            <th class="px-3 py-2 text-left">Total</th>
-                            <th class="px-3 py-2 text-left">Frete</th>
-                            <th class="px-3 py-2 text-left">Status</th>
-                            <th class="px-3 py-2 text-left">Data</th>
-                            <th class="px-3 py-2 text-left">Ações</th>
+                            <th>ID</th>
+                            <th>Cliente</th>
+                            <th>WhatsApp</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Data</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${pedidos.map(p => {
-                            const itens = p.items || [];
-                            const dadosEntrega = p.dados_entrega || {};
-                            const nomeCliente = dadosEntrega.nome || p.perfis?.nome || 'Sem nome';
-                            const whatsapp = dadosEntrega.whatsapp || p.perfis?.whatsapp || 'Sem telefone';
-                            const endereco = dadosEntrega.endereco || 'Não informado';
-                            const tipoFrete = dadosEntrega.tipo_frete || 'N/A';
-                            const valorFrete = dadosEntrega.valor_frete || 0;
-                            
-                            return `
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="px-3 py-2 font-mono text-xs">#${p.id}</td>
-                                <td class="px-3 py-2">${nomeCliente}</td>
-                                <td class="px-3 py-2 font-mono text-xs">${whatsapp}</td>
-                                <td class="px-3 py-2 max-w-xs truncate" title="${endereco}">${endereco}</td>
-                                <td class="px-3 py-2">
-                                    <button onclick="mostrarDetalhesPedido(${p.id})" class="text-blue-600 hover:underline text-xs">
-                                        Ver ${itens.length} item(ns)
-                                    </button>
-                                </td>
-                                <td class="px-3 py-2 font-bold">${formatarMoeda(p.valor_total)}</td>
-                                <td class="px-3 py-2 text-xs">${tipoFrete}<br>${formatarMoeda(valorFrete)}</td>
-                                <td class="px-3 py-2">
-                                    <span class="px-2 py-1 rounded text-xs font-medium ${getStatusColor(p.status)}">
-                                        ${p.status}
-                                    </span>
-                                </td>
-                                <td class="px-3 py-2 text-xs">${new Date(p.created_at).toLocaleDateString('pt-BR')}</td>
-                                <td class="px-3 py-2">
-                                    <select onchange="atualizarStatusPedido(${p.id}, this.value)" class="text-xs border rounded px-2 py-1">
+                        ${pedidos.map(p => `
+                            <tr>
+                                <td>#${p.id}</td>
+                                <td>${p.perfis?.nome || '-'}</td>
+                                <td>${p.perfis?.whatsapp || '-'}</td>
+                                <td>${formatarMoeda(p.total)}</td>
+                                <td>${p.status}</td>
+                                <td>${new Date(p.data).toLocaleString('pt-BR')}</td>
+                                <td>
+                                    <select onchange="atualizarStatusPedido(${p.id}, this.value)">
                                         <option value="">Alterar...</option>
-                                        <option value="Pendente">Pendente</option>
                                         <option value="Pago">Pago</option>
                                         <option value="Enviado">Enviado</option>
                                         <option value="Entregue">Entregue</option>
-                                        <option value="Cancelado">Cancelado</option>
                                     </select>
                                 </td>
                             </tr>
-                        `;
-                        }).join('')}
+                        `).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1036,54 +944,6 @@
         }
     }
 
-    // Função para mostrar detalhes do pedido
-    window.mostrarDetalhesPedido = async function(pedidoId) {
-        const { data: pedido, error } = await supabaseClient
-            .from('pedidos')
-            .select('*')
-            .eq('id', pedidoId)
-            .single();
-
-        if (error || !pedido) {
-            alert('Erro ao carregar detalhes do pedido');
-            return;
-        }
-
-        const itens = pedido.items || [];
-        const dadosPagamento = pedido.dados_pagamento || {};
-        const dadosEntrega = pedido.dados_entrega || {};
-
-        const detalhes = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 PEDIDO #${pedido.id}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-👤 CLIENTE:
-Nome: ${dadosEntrega.nome || 'N/A'}
-WhatsApp: ${dadosEntrega.whatsapp || 'N/A'}
-Endereço: ${dadosEntrega.endereco || 'N/A'}
-
-🛍️ ITENS:
-${itens.map(item => `• ${item.nome} - ${item.quantidade}x ${formatarMoeda(item.preco)} = ${formatarMoeda(item.preco * item.quantidade)}`).join('\n')}
-
-💰 VALORES:
-Subtotal: ${formatarMoeda(pedido.valor_total - (dadosEntrega.valor_frete || 0))}
-Frete (${dadosEntrega.tipo_frete || 'N/A'}): ${formatarMoeda(dadosEntrega.valor_frete || 0)}
-TOTAL: ${formatarMoeda(pedido.valor_total)}
-
-💳 PAGAMENTO:
-Método: ${pedido.metodo_pagamento}
-${dadosPagamento.payment_method_id ? `Cartão: ${dadosPagamento.payment_method_id}` : ''}
-${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''}
-
-📅 Data: ${new Date(pedido.created_at).toLocaleString('pt-BR')}
-🏷️ Status: ${pedido.status}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        `;
-
-        alert(detalhes);
-    };
-
 
 
     function getStatusColor(status) {
@@ -1091,8 +951,7 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
             'Pendente': 'bg-yellow-100 text-yellow-800',
             'Pago': 'bg-green-100 text-green-800',
             'Enviado': 'bg-blue-100 text-blue-800',
-            'Entregue': 'bg-gray-100 text-gray-800',
-            'Cancelado': 'bg-red-100 text-red-800'
+            'Entregue': 'bg-gray-100 text-gray-800'
         };
         return colors[status] || 'bg-gray-100 text-gray-800';
     }
@@ -1469,7 +1328,7 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
         ` : '';
 
             return `
-            <div class="product-card bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
+            <div class="product-card bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                 <div class="aspect-square overflow-hidden bg-gray-100 relative">
                     <img 
                         src="${produto.caminho_imagem_local || 'img/sem-foto.png'}" 
@@ -1483,32 +1342,25 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
                         </div>
                     ` : ''}
                 </div>
-                <div class="p-4 flex flex-col">
-                    <h3 class="font-semibold text-gray-900 mb-1 line-clamp-1">
-    ${limitarTexto(produto.nome, 40)}
-</h3>
-
-<p class="text-sm text-gray-500 mb-3 line-clamp-2 min-h-[36px] mb-2">
-    ${limitarTexto(produto.descricao, 50)}
-</p>
-
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-900 mb-1">${produto.nome}</h3>
+                    <p class="text-sm text-gray-500 mb-3 line-clamp-2">${produto.descricao || ''}</p>
                     
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xl font-bold text-black">${formatarMoeda(produto.preco)}</span>
                     </div>
                     
-                    <div class="text-xs text-gray-500 mb-2">
-    ${esgotado ? 'Indisponível' : `Estoque: ${produto.estoque} un.`}
-</div>
+                    <div class="text-xs text-gray-500 mb-3">
+                        ${esgotado ? 'Indisponível' : `Estoque: ${produto.estoque} un.`}
+                    </div>
 
-<button 
-    onclick="adicionarAoCarrinho(${produto.id})"
-    ${esgotado ? 'disabled' : ''}
-    class="w-full bg-black text-white px-4 py-2 rounded-full text-sm font-medium 
-           ${esgotado ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-800'} 
-           transition-colors flex items-center justify-center gap-2"
->
-
+                    <button 
+                        onclick="adicionarAoCarrinho(${produto.id})"
+                        ${esgotado ? 'disabled' : ''}
+                        class="w-full bg-black text-white px-4 py-2 rounded-full text-sm font-medium 
+                               ${esgotado ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-800'} 
+                               transition-colors flex items-center justify-center gap-2"
+                    >
                         <i data-lucide="${esgotado ? 'x-circle' : 'plus'}" class="w-4 h-4"></i>
                         ${esgotado ? 'Indisponível' : 'Adicionar'}
                     </button>
@@ -1521,12 +1373,6 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
 
         lucide.createIcons();
     }
-
-    function limitarTexto(texto, max = 40) {
-    if (!texto) return "";
-    return texto.length > max ? texto.slice(0, max) + "..." : texto;
-    }
-
 
     function renderizarCarrinho() {
         const drawer = document.getElementById('cart-drawer');
@@ -2041,7 +1887,7 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
 
             try {
                 const response = await fetch(
-                    `${BASE_URL_FUNCOES}/.netlify/functions/frete`,
+                    "https://frete-correios-api.netlify.app/.netlify/functions/frete",
                     {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -2192,12 +2038,28 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
             callbacks: {
                 onFormMounted: error => {
                     window.mpCarregando = false;
-                    if (error) return console.error("Erro MP:", error);
+                    if (error) {
+                        console.error("❌ Erro ao montar formulário:", error);
+                        return;
+                    }
                     console.log("✅ AGORA SIM: Campos prontos!");
                 },
                 onSubmit: (event) => {
                     event.preventDefault();
-                    processarPagamento(window.cardForm.getCardFormData());
+                    console.log("📝 Formulário submetido");
+                    processarPagamento();
+                },
+                onFetching: (resource) => {
+                    console.log("⏳ Buscando:", resource);
+                },
+                onError: (error) => {
+                    console.error("❌ ERRO DO MERCADO PAGO:", error);
+                    mostrarNotificacao(error.message || "Erro ao processar dados do cartão", "error");
+                },
+                onValidityChange: (error, field) => {
+                    if (error) {
+                        console.warn("⚠️ Campo inválido:", field, "Erro:", error);
+                    }
                 }
             }
         });
