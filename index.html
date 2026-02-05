@@ -778,63 +778,168 @@
     // ============================================
     // 💳 PROCESSAMENTO DE PAGAMENTO FINAL
     // ============================================
-async function processarPagamento() {
-    if (!state.freteSelecionado) {
-        mostrarNotificacao("Selecione o frete antes de pagar.", "error");
-        return;
-    }
-
-    const btn = document.getElementById('btn-pagar');
-    btn.disabled = true;
-    btn.innerHTML = "⏳ Abrindo Pagamento...";
-
-    try {
-        // Prepara os itens do carrinho para o Mercado Pago
-        const itemsParaMP = state.carrinho.map(item => ({
-            title: item.nome,
-            unit_price: Number(item.preco),
-            quantity: Number(item.quantidade),
-            currency_id: "BRL"
-        }));
-
-        // Inclui o frete como um item
-        itemsParaMP.push({
-            title: "Frete de Entrega",
-            unit_price: Number(state.freteSelecionado),
-            quantity: 1,
-            currency_id: "BRL"
-        });
-
-        const payload = {
-            items: itemsParaMP,
-            loja_id: ID_DA_LOJA
-            // Não enviamos mais e-mail/CPF, o cliente preenche no MP
-        };
-
-        const response = await fetch(
-            "https://frete-correios-api.netlify.app/.netlify/functions/criar-preferencia",
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            }
-        );
-
-        const result = await response.json();
-
-        if (result.init_point) {
-            window.location.href = result.init_point;
-        } else {
-            throw new Error("Não foi possível gerar o link de pagamento.");
+    async function processarPagamento() {
+        if (!state.freteSelecionado) {
+            mostrarNotificacao("Selecione o frete antes de pagar.", "error");
+            return;
         }
 
-    } catch (error) {
-        console.error("Erro:", error);
-        mostrarNotificacao("Erro ao iniciar pagamento. Tente novamente.", "error");
-        btn.disabled = false;
-        btn.innerHTML = "FINALIZAR E PAGAR";
+        const docNumber = document.getElementById('docNumber').value.replace(/\D/g, '');
+        if (docNumber.length < 11) {
+            mostrarNotificacao("Por favor, insira um CPF válido.", "error");
+            return;
+        }
+
+        const btn = document.getElementById('btn-pagar');
+        btn.disabled = true;
+        btn.innerHTML = "⏳ Processando...";
+
+        try {
+            const cardFormData = window.cardForm.getCardFormData();
+            console.log("🎫 Card Form Data:", cardFormData);
+            
+            if (!cardFormData.token) throw new Error("Dados do cartão inválidos.");
+
+            const subtotal = state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+            const totalVenda = subtotal + state.freteSelecionado;
+
+            const payload = {
+                token: cardFormData.token,
+                installments: Number(cardFormData.installments),
+                payment_method_id: cardFormData.payment_method_id,
+                issuer_id: cardFormData.issuer_id,
+                email: document.getElementById('cardholderEmail').value,
+                docNumber,
+                total: totalVenda,
+                loja_id: ID_DA_LOJA
+            };
+
+            console.log("📤 Enviando para Netlify:", payload);
+
+            // URL da sua função Netlify
+            const response = await fetch(
+                `${BASE_URL_FUNCOES}/.netlify/functions/criar-pagamento`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                }
+            );
+
+            console.log("📥 Status da resposta:", response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("❌ Erro HTTP:", errorText);
+                throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log("📦 Resposta do Mercado Pago:", result);
+
+            // Se houve erro retornado pela API
+            if (result.erro) {
+                throw new Error(result.erro);
+            }
+
+            // Verifica status do pagamento
+            if (result.status === 'approved') {
+                // Preparar dados do pedido
+                const dadosPedido = {
+                    loja_id: ID_DA_LOJA,
+                    user_id: state.usuarioAtual?.id || null,
+                    valor_total: totalVenda,
+                    status: 'Pago',
+                    metodo_pagamento: 'cartao_credito',
+                    items: state.carrinho,
+                    payment_id: result.id,
+                    dados_pagamento: {
+                        payment_method_id: cardFormData.payment_method_id,
+                        installments: Number(cardFormData.installments),
+                        status: result.status,
+                        status_detail: result.status_detail
+                    },
+                    dados_entrega: {
+                        nome: document.getElementById('nomeCliente')?.value || state.usuarioAtual?.nome,
+                        whatsapp: document.getElementById('telCliente')?.value || state.usuarioAtual?.whatsapp,
+                        endereco: document.getElementById('enderecoEntrega')?.value,
+                        tipo_frete: state.tipoFrete,
+                        valor_frete: state.freteSelecionado
+                    }
+                };
+
+                // Salvar pedido no Supabase
+                const { data: pedido, error: errorPedido } = await supabaseClient
+                    .from('pedidos')
+                    .insert(dadosPedido)
+                    .select()
+                    .single();
+
+                if (errorPedido) {
+                    console.error("Erro ao salvar pedido:", errorPedido);
+                    throw new Error("Erro ao salvar pedido: " + errorPedido.message);
+                }
+
+                console.log("✅ Pagamento aprovado! ID:", result.id);
+                mostrarNotificacao("✅ Pagamento aprovado!", "success");
+                
+                // Limpar carrinho
+                state.carrinho = [];
+                state.freteSelecionado = 0;
+                state.tipoFrete = null;
+                
+                renderizarCarrinho();
+                atualizarBadge();
+                
+                // Redirecionar para página de sucesso
+                setTimeout(() => window.location.href = `sucesso.html?id=${pedido.id}`, 1000);
+                
+            } else if (result.status === 'pending') {
+                // Pagamento pendente
+                mostrarNotificacao("⏳ Pagamento pendente de aprovação", "info");
+                
+                // Salvar como pendente
+                const dadosPedido = {
+                    loja_id: ID_DA_LOJA,
+                    user_id: state.usuarioAtual?.id || null,
+                    valor_total: totalVenda,
+                    status: 'Pendente',
+                    metodo_pagamento: 'cartao_credito',
+                    items: state.carrinho,
+                    payment_id: result.id,
+                    dados_pagamento: {
+                        payment_method_id: cardFormData.payment_method_id,
+                        installments: Number(cardFormData.installments),
+                        status: result.status,
+                        status_detail: result.status_detail
+                    },
+                    dados_entrega: {
+                        nome: document.getElementById('nomeCliente')?.value || state.usuarioAtual?.nome,
+                        whatsapp: document.getElementById('telCliente')?.value || state.usuarioAtual?.whatsapp,
+                        endereco: document.getElementById('enderecoEntrega')?.value,
+                        tipo_frete: state.tipoFrete,
+                        valor_frete: state.freteSelecionado
+                    }
+                };
+
+                await supabaseClient.from('pedidos').insert(dadosPedido);
+                
+                state.carrinho = [];
+                renderizarCarrinho();
+                setTimeout(() => toggleCarrinho(), 1000);
+                
+            } else {
+                // Pagamento rejeitado
+                throw new Error(result.status_detail || "Pagamento recusado. Verifique os dados do cartão.");
+            }
+
+        } catch (error) {
+            console.error("💥 Erro no processamento:", error);
+            mostrarNotificacao(error.message || "Erro ao processar pagamento", "error");
+            btn.disabled = false;
+            btn.innerHTML = "CONFIRMAR PAGAMENTO AGORA";
+        }
     }
-}
 
     // ============================================
     // 👨‍💼 PAINEL ADMIN
@@ -1492,20 +1597,30 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
         </div>
 
       
-<div class="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4">
-    <div class="flex items-center gap-3 mb-2">
-        <i data-lucide="shield-check" class="text-blue-600"></i>
-        <span class="font-semibold text-blue-800">Pagamento Seguro</span>
-    </div>
-    <p class="text-sm text-blue-700">
-        Você escolherá a forma de pagamento (PIX, Cartão ou Boleto) com total segurança na próxima etapa.
-    </p>
+<form id="form-checkout" class="${state.freteSelecionado > 0 ? '' : 'hidden'} bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
+    <p class="text-xs font-bold text-gray-500 uppercase">Dados do Cartão:</p>
+    
+ <div id="cardNumber-container" class="bg-white border p-3 rounded-xl h-12"></div>
+<div class="flex gap-2">
+    <div id="expirationDate-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
+    <div id="securityCode-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
 </div>
+    
+    <input type="text" id="cardholderName" placeholder="Nome como está no cartão" class="w-full border p-3 rounded-xl text-sm">
+    <input type="email" id="cardholderEmail" placeholder="E-mail para recibo" class="w-full border p-3 rounded-xl text-sm">
+    
+    <div class="flex gap-2">
+        <input type="text" id="docNumber" placeholder="CPF do Titular" class="w-full border p-3 rounded-xl text-sm">
+        <select id="installments" class="w-full border p-3 rounded-xl text-sm bg-white"></select>
+    </div>
 
-<button id="btn-pagar" onclick="processarPagamento()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2">
-    <span>FINALIZAR E PAGAR</span>
-    <i data-lucide="arrow-right"></i>
+    <!-- Campo oculto necessário para o Mercado Pago V2 -->
+    <select id="issuer" class="hidden"></select>
+
+   <button type="submit" id="btn-pagar" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold shadow-lg hover:bg-green-700 transition-all">
+    CONFIRMAR PAGAMENTO AGORA
 </button>
+</form>
 
         <div class="bg-gray-50 p-4 rounded-2xl space-y-2 border border-gray-100">
             <div class="flex justify-between text-xs text-gray-500 font-medium italic">
