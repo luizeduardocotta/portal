@@ -2027,7 +2027,7 @@
             form: {
                 id: "form-checkout",
                 cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
-                expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
+                expirationDate: { id: "expirationDate-container", placeholder: "MM/YY" },
                 securityCode: { id: "securityCode-container", placeholder: "CVV" },
                 cardholderName: { id: "cardholderName" },
                 cardholderEmail: { id: "cardholderEmail" },
@@ -2054,11 +2054,27 @@
                 },
                 onError: (error) => {
                     console.error("❌ ERRO DO MERCADO PAGO:", error);
-                    mostrarNotificacao(error.message || "Erro ao processar dados do cartão", "error");
+                    if (Array.isArray(error)) {
+                        error.forEach((err, index) => {
+                            console.error(`  Erro ${index + 1}:`, err);
+                            console.error(`    - Mensagem:`, err.message);
+                            console.error(`    - Código:`, err.code);
+                            console.error(`    - Campo:`, err.field);
+                        });
+                    }
+                    const mensagem = Array.isArray(error) && error[0] ? error[0].message : error.message || "Erro ao processar dados do cartão";
+                    mostrarNotificacao(mensagem, "error");
                 },
                 onValidityChange: (error, field) => {
                     if (error) {
-                        console.warn("⚠️ Campo inválido:", field, "Erro:", error);
+                        console.warn("⚠️ Campo inválido:", field);
+                        if (Array.isArray(error)) {
+                            error.forEach((err, index) => {
+                                console.warn(`  Erro ${index + 1}:`, err);
+                            });
+                        } else {
+                            console.warn("  Erro:", error);
+                        }
                     }
                 }
             }
@@ -2120,6 +2136,7 @@
     </div>
 </footer>
 
+
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const slider = document.getElementById("slider");
@@ -2152,3 +2169,5 @@
 </body>
 
 </html>
+
+
