@@ -1469,7 +1469,7 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
         ` : '';
 
             return `
-            <div class="product-card bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <div class="product-card bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
                 <div class="aspect-square overflow-hidden bg-gray-100 relative">
                     <img 
                         src="${produto.caminho_imagem_local || 'img/sem-foto.png'}" 
@@ -1483,25 +1483,32 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
                         </div>
                     ` : ''}
                 </div>
-                <div class="p-4">
-                    <h3 class="font-semibold text-gray-900 mb-1">${produto.nome}</h3>
-                    <p class="text-sm text-gray-500 mb-3 line-clamp-2">${produto.descricao || ''}</p>
+                <div class="p-4 flex flex-col">
+                    <h3 class="font-semibold text-gray-900 mb-1 line-clamp-1">
+    ${limitarTexto(produto.nome, 40)}
+</h3>
+
+<p class="text-sm text-gray-500 mb-3 line-clamp-2 min-h-[36px] mb-2">
+    ${limitarTexto(produto.descricao, 50)}
+</p>
+
                     
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xl font-bold text-black">${formatarMoeda(produto.preco)}</span>
                     </div>
                     
-                    <div class="text-xs text-gray-500 mb-3">
-                        ${esgotado ? 'Indisponível' : `Estoque: ${produto.estoque} un.`}
-                    </div>
+                    <div class="text-xs text-gray-500 mb-2">
+    ${esgotado ? 'Indisponível' : `Estoque: ${produto.estoque} un.`}
+</div>
 
-                    <button 
-                        onclick="adicionarAoCarrinho(${produto.id})"
-                        ${esgotado ? 'disabled' : ''}
-                        class="w-full bg-black text-white px-4 py-2 rounded-full text-sm font-medium 
-                               ${esgotado ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-800'} 
-                               transition-colors flex items-center justify-center gap-2"
-                    >
+<button 
+    onclick="adicionarAoCarrinho(${produto.id})"
+    ${esgotado ? 'disabled' : ''}
+    class="w-full bg-black text-white px-4 py-2 rounded-full text-sm font-medium 
+           ${esgotado ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-800'} 
+           transition-colors flex items-center justify-center gap-2"
+>
+
                         <i data-lucide="${esgotado ? 'x-circle' : 'plus'}" class="w-4 h-4"></i>
                         ${esgotado ? 'Indisponível' : 'Adicionar'}
                     </button>
@@ -1514,6 +1521,12 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
 
         lucide.createIcons();
     }
+
+    function limitarTexto(texto, max = 40) {
+    if (!texto) return "";
+    return texto.length > max ? texto.slice(0, max) + "..." : texto;
+    }
+
 
     function renderizarCarrinho() {
         const drawer = document.getElementById('cart-drawer');
@@ -2224,10 +2237,11 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
        <div>
   <h3 class="text-xl font-bold mb-4">Compra Segura</h3>
 
-  <div class="flex items-center gap-4">
-    <img src="img/mercado-pago.webp" alt="Mercado Pago" class="h-24 object-cover rounded">
-    <img src="img/site-seguro.webp" alt="Site Seguro SSL" class="h-24 object-cover rounded">
-  </div>
+  <div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-start">
+  <img src="img/mercado-pago.webp" alt="Mercado Pago" class="h-20 object-cover rounded">
+  <img src="img/site-seguro.webp" alt="Site Seguro SSL" class="h-20 object-cover rounded">
+</div>
+
 
   <p class="text-gray-400 text-sm mt-3">
     Pagamento protegido • Dados criptografados • Entrega garantida
