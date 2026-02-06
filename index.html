@@ -227,7 +227,7 @@ window.ENV = {
 
 <script>
 
-    // ============================================
+   // ============================================
     // 🔧 ÁREA DE CONFIGURAÇÃO - EDITE AQUI
     // ============================================
 
@@ -249,8 +249,12 @@ const URL_CRIAR_PREFERENCE = "/.netlify/functions/criar-preference";
 const URL_CALCULAR_FRETE = "/.netlify/functions/calcular-frete";
 
 // Supabase via ENV
-const SUPABASE_URL = window.ENV?.SUPABASE_URL || "";
-const SUPABASE_KEY = window.ENV?.SUPABASE_KEY || "";
+// Configuração Direta Supabase
+const SUPABASE_URL = "https://snupieyqdnltivjqctda.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNudXBpZXlxZG5sdGl2anFjdGRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3ODE3MDgsImV4cCI6MjA4NTM1NzcwOH0.PuvYESH52fYUacYVNeqGLBc-QtdU-UwJE-6hpIIXFCk";
+
+// ATENÇÃO: Use a 'anon public', NUNCA a 'service_role' no HTML, 
+// pois a service_role dá acesso total ao seu banco e qualquer um pode apagar tudo.
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("Supabase ENV não carregado");
@@ -268,16 +272,6 @@ const supabaseClient = supabase.createClient(
     }
   }
 );
-
-
-    // IDENTIFICADOR ÚNICO DESTA LOJA
-    // Você pega esse ID na tabela 'lojas' do Supabase após cadastrar o cliente
-    //Você pega essa Public Key no Mercado Pago do cliente 
-    const ID_DA_LOJA = 'e7e8b345-7c79-41cd-a454-befbad2580cc';
-
-
-
-
 
     // ============================================
     // 💾 ESTADO DA APLICAÇÃO
