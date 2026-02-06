@@ -216,6 +216,13 @@
     </style>
 </head>
 
+<script>
+window.ENV = {
+  SUPABASE_URL: "{{SUPABASE_URL}}",
+  SUPABASE_KEY: "{{VITE_SUPABASE_KEY}}"
+};
+</script>
+
 
 
 <script>
@@ -237,33 +244,30 @@
         urlFuncoes: "" // Ex: "https://seu-site.netlify.app" ou deixe ""
     };
 
-         // Auto-detecta URL das funções se não configurado
-    // Checkout: prioriza mesmo domínio para evitar CORS no criar-preference
-  const URL_CRIAR_PREFERENCE = "/.netlify/functions/criar-preference";
+     // URLs das Functions
+const URL_CRIAR_PREFERENCE = "/.netlify/functions/criar-preference";
 const URL_CALCULAR_FRETE = "/.netlify/functions/calcular-frete";
 
+// Supabase via ENV
+const SUPABASE_URL = window.ENV?.SUPABASE_URL || "";
+const SUPABASE_KEY = window.ENV?.SUPABASE_KEY || "";
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error("Supabase ENV não carregado");
+}
 
 
-    let FRETE_ATUAL = 0; // valor calculado na API
-
-
-    // Configurações do Supabase
-   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || window.SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || window.SUPABASE_KEY;
-
-
-    const supabaseClient = supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY,
-        {
-            auth: {
-                persistSession: true,
-                autoRefreshToken: true,
-                detectSessionInUrl: true
-            }
-        }
-    );
-
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  }
+);
 
 
     // IDENTIFICADOR ÚNICO DESTA LOJA
@@ -2103,4 +2107,5 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
 </body>
 
 </html>
+
 
