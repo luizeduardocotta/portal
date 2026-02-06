@@ -559,7 +559,8 @@
                 await supabaseClient.from('perfis').insert({
                     id: data.user.id,
                     nome,
-                    whatsapp
+                    whatsapp,
+                    loja_id: ID_DA_LOJA
                 });
 
 
@@ -727,220 +728,84 @@
     }
 
 
-    // ============================================
-    // 💳 CHECKOUT INTEGRADO (TRANSPARENTE)
-    // ============================================
+// ============================================
+// 💳 CHECKOUT PRO (REDIRECIONAMENTO)
+// ============================================
 
-    async function finalizarPedidoComMetodo(metodo) {
-        // 1. Coleta de dados
-        const nome = document.getElementById('nomeCliente')?.value;
-        const tel = document.getElementById('telCliente')?.value;
-        const endereco = document.getElementById('enderecoEntrega')?.value;
+async function processarPagamento() {
+    const btn = document.getElementById('btn-pagar');
+    
+    // 1. Validações Básicas
+    const nome = document.getElementById('nomeCliente')?.value;
+    const tel = document.getElementById('telCliente')?.value;
+    const endereco = document.getElementById('enderecoEntrega')?.value;
 
-        const nomeFinal = nome || state.usuarioAtual?.nome || "Cliente";
-
-        if (!nome && !state.usuarioAtual) {
-            mostrarNotificacao('Por favor, faça login ou preencha seus dados.', 'error');
-            return;
-        }
-
-        if (state.freteSelecionado === 0) {
-            mostrarNotificacao('Por favor, selecione uma opção de frete.', 'error');
-            return;
-        }
-
-        if (state.carrinho.length === 0) {
-            mostrarNotificacao('Seu carrinho está vazio!', 'error');
-            return;
-        }
-
-        // 2. Lógica de Direcionamento de Pagamento
-        try {
-            if (metodo === 'cartao') {
-                mostrarNotificacao('Processando pagamento...', 'black');
-                // Chama a função nova que criamos para o Checkout Transparente
-                await processarPagamento();
-            }
-            else if (metodo === 'pix') {
-                const subtotal = calcularSubtotal();
-                const totalFinal = subtotal + state.freteSelecionado;
-
-
-            }
-        } catch (error) {
-            console.error('Erro no checkout:', error);
-            mostrarNotificacao('Erro ao processar pedido.', 'error');
-        }
-    } // <--- FECHAMENTO DA FUNÇÃO finalizarPedidoComMetodo
-
-
-
-    // ============================================
-    // 💳 PROCESSAMENTO DE PAGAMENTO FINAL
-    // ============================================
-    async function processarPagamento() {
-        if (!state.freteSelecionado) {
-            mostrarNotificacao("Selecione o frete antes de pagar.", "error");
-            return;
-        }
-
-        const docNumber = document.getElementById('docNumber').value.replace(/\D/g, '');
-        if (docNumber.length < 11) {
-            mostrarNotificacao("Por favor, insira um CPF válido.", "error");
-            return;
-        }
-
-        const btn = document.getElementById('btn-pagar');
-        btn.disabled = true;
-        btn.innerHTML = "⏳ Processando...";
-
-        try {
-            const cardFormData = window.cardForm.getCardFormData();
-            console.log("🎫 Card Form Data:", cardFormData);
-            
-            if (!cardFormData.token) throw new Error("Dados do cartão inválidos.");
-
-            const subtotal = state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
-            const totalVenda = subtotal + state.freteSelecionado;
-
-            const payload = {
-                token: cardFormData.token,
-                installments: Number(cardFormData.installments),
-                payment_method_id: cardFormData.payment_method_id,
-                issuer_id: cardFormData.issuer_id,
-                email: document.getElementById('cardholderEmail').value,
-                docNumber,
-                total: totalVenda,
-                loja_id: ID_DA_LOJA
-            };
-
-            console.log("📤 Enviando para Netlify:", payload);
-
-            // URL da sua função Netlify
-            const response = await fetch(
-                `${BASE_URL_FUNCOES}/.netlify/functions/criar-pagamento`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                }
-            );
-
-            console.log("📥 Status da resposta:", response.status);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error("❌ Erro HTTP:", errorText);
-                throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
-            }
-
-            const result = await response.json();
-            console.log("📦 Resposta do Mercado Pago:", result);
-
-            // Se houve erro retornado pela API
-            if (result.erro) {
-                throw new Error(result.erro);
-            }
-
-            // Verifica status do pagamento
-            if (result.status === 'approved') {
-                // Preparar dados do pedido
-                const dadosPedido = {
-                    loja_id: ID_DA_LOJA,
-                    user_id: state.usuarioAtual?.id || null,
-                    valor_total: totalVenda,
-                    status: 'Pago',
-                    metodo_pagamento: 'cartao_credito',
-                    items: state.carrinho,
-                    payment_id: result.id,
-                    dados_pagamento: {
-                        payment_method_id: cardFormData.payment_method_id,
-                        installments: Number(cardFormData.installments),
-                        status: result.status,
-                        status_detail: result.status_detail
-                    },
-                    dados_entrega: {
-                        nome: document.getElementById('nomeCliente')?.value || state.usuarioAtual?.nome,
-                        whatsapp: document.getElementById('telCliente')?.value || state.usuarioAtual?.whatsapp,
-                        endereco: document.getElementById('enderecoEntrega')?.value,
-                        tipo_frete: state.tipoFrete,
-                        valor_frete: state.freteSelecionado
-                    }
-                };
-
-                // Salvar pedido no Supabase
-                const { data: pedido, error: errorPedido } = await supabaseClient
-                    .from('pedidos')
-                    .insert(dadosPedido)
-                    .select()
-                    .single();
-
-                if (errorPedido) {
-                    console.error("Erro ao salvar pedido:", errorPedido);
-                    throw new Error("Erro ao salvar pedido: " + errorPedido.message);
-                }
-
-                console.log("✅ Pagamento aprovado! ID:", result.id);
-                mostrarNotificacao("✅ Pagamento aprovado!", "success");
-                
-                // Limpar carrinho
-                state.carrinho = [];
-                state.freteSelecionado = 0;
-                state.tipoFrete = null;
-                
-                renderizarCarrinho();
-                atualizarBadge();
-                
-                // Redirecionar para página de sucesso
-                setTimeout(() => window.location.href = `sucesso.html?id=${pedido.id}`, 1000);
-                
-            } else if (result.status === 'pending') {
-                // Pagamento pendente
-                mostrarNotificacao("⏳ Pagamento pendente de aprovação", "info");
-                
-                // Salvar como pendente
-                const dadosPedido = {
-                    loja_id: ID_DA_LOJA,
-                    user_id: state.usuarioAtual?.id || null,
-                    valor_total: totalVenda,
-                    status: 'Pendente',
-                    metodo_pagamento: 'cartao_credito',
-                    items: state.carrinho,
-                    payment_id: result.id,
-                    dados_pagamento: {
-                        payment_method_id: cardFormData.payment_method_id,
-                        installments: Number(cardFormData.installments),
-                        status: result.status,
-                        status_detail: result.status_detail
-                    },
-                    dados_entrega: {
-                        nome: document.getElementById('nomeCliente')?.value || state.usuarioAtual?.nome,
-                        whatsapp: document.getElementById('telCliente')?.value || state.usuarioAtual?.whatsapp,
-                        endereco: document.getElementById('enderecoEntrega')?.value,
-                        tipo_frete: state.tipoFrete,
-                        valor_frete: state.freteSelecionado
-                    }
-                };
-
-                await supabaseClient.from('pedidos').insert(dadosPedido);
-                
-                state.carrinho = [];
-                renderizarCarrinho();
-                setTimeout(() => toggleCarrinho(), 1000);
-                
-            } else {
-                // Pagamento rejeitado
-                throw new Error(result.status_detail || "Pagamento recusado. Verifique os dados do cartão.");
-            }
-
-        } catch (error) {
-            console.error("💥 Erro no processamento:", error);
-            mostrarNotificacao(error.message || "Erro ao processar pagamento", "error");
-            btn.disabled = false;
-            btn.innerHTML = "CONFIRMAR PAGAMENTO AGORA";
-        }
+    if (!nome || !tel || !endereco) {
+        mostrarNotificacao("Por favor, preencha nome, telefone e endereço.", "error");
+        return;
     }
 
+    if (!state.freteSelecionado) {
+        mostrarNotificacao("Por favor, selecione uma opção de frete.", "error");
+        return;
+    }
+
+    // 2. Interface de carregamento
+    btn.disabled = true;
+    btn.innerHTML = "⏳ Gerando link seguro...";
+
+    try {
+        // 3. Monta os itens (Produtos + Frete)
+        const itensCompra = state.carrinho.map(item => ({
+            title: item.nome,
+            unit_price: Number(item.preco),
+            quantity: Number(item.quantidade),
+            currency_id: "BRL"
+        }));
+
+        itensCompra.push({
+            title: "Frete de Entrega",
+            unit_price: Number(state.freteSelecionado),
+            quantity: 1,
+            currency_id: "BRL"
+        });
+
+        // 4. Payload para a sua função Netlify
+        const payload = {
+            items: itensCompra,
+            loja_id: ID_DA_LOJA,
+            // Opcional: Enviar dados do cliente para o Mercado Pago já saber quem é
+            payer: {
+                name: nome,
+                phone: { number: tel },
+                address: { street_name: endereco }
+            }
+        };
+
+        const response = await fetch("https://frete-correios-api.netlify.app/.netlify/functions/criar-preference", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error("Erro na API do servidor.");
+
+        const data = await response.json();
+
+        if (data.init_point) {
+            // ✅ SUCESSO: Vai para o Mercado Pago
+            window.location.href = data.init_point;
+        } else {
+            throw new Error(data.erro || "Link não gerado.");
+        }
+
+    } catch (error) {
+        console.error("Erro no checkout:", error);
+        mostrarNotificacao("Falha ao iniciar pagamento. Tente novamente.", "error");
+        btn.disabled = false;
+        btn.innerHTML = "IR PARA PAGAMENTO SEGURO";
+    }
+}
     // ============================================
     // 👨‍💼 PAINEL ADMIN
     // ============================================
@@ -1597,31 +1462,21 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
         </div>
 
       
-<form id="form-checkout" class="${state.freteSelecionado > 0 ? '' : 'hidden'} bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
-    <p class="text-xs font-bold text-gray-500 uppercase">Dados do Cartão:</p>
-    
- <div id="cardNumber-container" class="bg-white border p-3 rounded-xl h-12"></div>
-<div class="flex gap-2">
-    <div id="expirationDate-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
-    <div id="securityCode-container" class="flex-1 bg-white border p-3 rounded-xl h-12"></div>
-</div>
-    
-    <input type="text" id="cardholderName" placeholder="Nome como está no cartão" class="w-full border p-3 rounded-xl text-sm">
-    <input type="email" id="cardholderEmail" placeholder="E-mail para recibo" class="w-full border p-3 rounded-xl text-sm">
-    
-    <div class="flex gap-2">
-        <input type="text" id="docNumber" placeholder="CPF do Titular" class="w-full border p-3 rounded-xl text-sm">
-        <select id="installments" class="w-full border p-3 rounded-xl text-sm bg-white"></select>
+<div id="payment-pro-container" class="space-y-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+    <div class="flex items-center gap-3 text-green-700">
+        <i data-lucide="shield-check" class="w-6 h-6"></i>
+        <span class="font-bold">Pagamento Seguro Mercado Pago</span>
     </div>
-
-    <!-- Campo oculto necessário para o Mercado Pago V2 -->
-    <select id="issuer" class="hidden"></select>
-
-   <button type="submit" id="btn-pagar" class="w-full bg-green-600 text-white p-4 rounded-2xl font-bold shadow-lg hover:bg-green-700 transition-all">
-    CONFIRMAR PAGAMENTO AGORA
-</button>
-</form>
-
+    <p class="text-sm text-gray-600">
+        Ao clicar no botão abaixo, você será redirecionado para o ambiente seguro do Mercado Pago para escolher entre **PIX, Cartão de Crédito ou Boleto**.
+    </p>
+    
+    <button id="btn-pagar" onclick="processarPagamento()" 
+        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+        <span>IR PARA PAGAMENTO SEGURO</span>
+        <i data-lucide="external-link" class="w-4 h-4"></i>
+    </button>
+</div>
         <div class="bg-gray-50 p-4 rounded-2xl space-y-2 border border-gray-100">
             <div class="flex justify-between text-xs text-gray-500 font-medium italic">
                 <span>Subtotal:</span>
@@ -2126,91 +1981,65 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
 </script>
 
 <script>
-        window.cardForm = null;
-        window.mpCarregando = false;
-
-        async function inicializarMercadoPago() {
-    // 1. Só continua se tivermos a chave e se já não houver uma carga em curso
-    if (!window.MP_PUBLIC_KEY || window.mpCarregando) return;
-
-    // 2. VERIFICAÇÃO CRÍTICA: Os containers existem no HTML neste exato milissegundo?
-    const containerTeste = document.getElementById("cardNumber-container");
-    if (!containerTeste) {
-        console.warn("Mercado Pago: Containers não encontrados. Tentando novamente em breve...");
-        return; 
+async function processarPagamento() {
+    const btn = document.getElementById('btn-pagar');
+    
+    if (!state.freteSelecionado) {
+        mostrarNotificacao("Por favor, selecione o frete primeiro.", "error");
+        return;
     }
 
-    window.mpCarregando = true;
+    btn.disabled = true;
+    btn.innerHTML = "⏳ Redirecionando para pagamento...";
 
     try {
-        // Limpa instâncias fantasmas
-        if (window.cardForm) {
-            console.log("MP: Desmontando instância anterior...");
-            if (typeof window.cardForm.unmount === 'function') {
-                try {
-                    await window.cardForm.unmount();
-                } catch (unmountError) {
-                    console.warn("MP: Erro ao desmontar (ignorado):", unmountError.message);
-                }
-            }
-            window.cardForm = null;
+        // Prepara os itens para o Mercado Pago
+        const itensCompra = state.carrinho.map(item => ({
+            title: item.nome,
+            unit_price: Number(item.preco),
+            quantity: Number(item.quantidade),
+            currency_id: "BRL"
+        }));
+
+        // Adiciona o frete
+        itensCompra.push({
+            title: "Frete",
+            unit_price: Number(state.freteSelecionado),
+            quantity: 1,
+            currency_id: "BRL"
+        });
+
+        // O payload agora é simples, sem dados de cartão
+        const payload = {
+            items: itensCompra,
+            loja_id: "e7e8b345-7c79-41cd-a454-befbad2580cc" // Peguei do seu log
+        };
+
+        const response = await fetch("https://frete-correios-api.netlify.app/.netlify/functions/criar-preference", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error("Erro na comunicação com a API.");
+
+        const data = await response.json();
+
+        if (data.init_point) {
+            // REDIRECIONA PARA O MERCADO PAGO
+            window.location.href = data.init_point;
+        } else {
+            throw new Error("Link de pagamento não recebido.");
         }
 
-        // LIMPA OS CONTAINERS MANUALMENTE para remover iframes residuais
-        const containers = ["cardNumber-container", "expirationDate-container", "securityCode-container"];
-        containers.forEach(id => {
-            const container = document.getElementById(id);
-            if (container) container.innerHTML = "";
-        });
-
-        // Aguarda um pouco para garantir que o DOM está limpo
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        console.log("MP: Criando nova instância...");
-
-        const mp = new window.MercadoPago(window.MP_PUBLIC_KEY);
-        
-        const totalVenda = (
-            state.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0)
-            + (state.freteSelecionado || 0)
-        ).toFixed(2);
-
-        window.cardForm = mp.cardForm({
-            amount: totalVenda.toString(),
-            iframe: true,
-            form: {
-                id: "form-checkout",
-                cardNumber: { id: "cardNumber-container", placeholder: "Número do Cartão" },
-                expirationDate: { id: "expirationDate-container", placeholder: "MM/AA" },
-                securityCode: { id: "securityCode-container", placeholder: "CVV" },
-                cardholderName: { id: "cardholderName" },
-                cardholderEmail: { id: "cardholderEmail" },
-                installments: { id: "installments" },
-                issuer: { id: "issuer" },
-                identificationNumber: { id: "docNumber" },
-            },
-            callbacks: {
-                onFormMounted: error => {
-                    window.mpCarregando = false;
-                    if (error) return console.error("Erro MP:", error);
-                    console.log("✅ AGORA SIM: Campos prontos!");
-                },
-                onSubmit: (event) => {
-                    event.preventDefault();
-                    processarPagamento(window.cardForm.getCardFormData());
-                }
-            }
-        });
-    } catch (e) {
-        console.error("Falha fatal MP:", e);
-        console.error("Detalhes do erro:", JSON.stringify(e, null, 2));
-        console.error("Mensagem:", e.message);
-        console.error("Stack:", e.stack);
-        window.mpCarregando = false;
+    } catch (error) {
+        console.error("Erro no checkout:", error);
+        mostrarNotificacao("Erro ao iniciar pagamento. Tente novamente.", "error");
+        btn.disabled = false;
+        btn.innerHTML = "FINALIZAR E PAGAR";
     }
 }
 </script>
-
 
 <footer class="bg-gray-900 text-white pt-12 pb-6">
     <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 border-b border-gray-800 pb-8">
@@ -2290,4 +2119,3 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
 </body>
 
 </html>
-
