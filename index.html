@@ -248,8 +248,9 @@ const URL_CALCULAR_FRETE = "/.netlify/functions/calcular-frete";
 
 
     // Configurações do Supabase
-    const SUPABASE_URL = 'https://snupieyqdnltivjqctda.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_jYZnNxQ1UsSF_yz2z3d3qA_ET1bqyJ0';
+   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || window.SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || window.SUPABASE_KEY;
+
 
     const supabaseClient = supabase.createClient(
         SUPABASE_URL,
