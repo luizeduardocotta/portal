@@ -1,0 +1,11 @@
+[[plugins]]
+  package = "@netlify/plugin-inject-env"
+
+[build]
+  publish = "."
+  
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
