@@ -227,7 +227,7 @@ window.ENV = {
 
 <script>
 
-    // ============================================
+       // ============================================
     // 🔧 ÁREA DE CONFIGURAÇÃO - EDITE AQUI
     // ============================================
 
@@ -251,17 +251,6 @@ window.ENV = {
 const SUPABASE_URL = 'https://snupieyqdnltivjqctda.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNudXBpZXlxZG5sdGl2anFjdGRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3ODE3MDgsImV4cCI6MjA4NTM1NzcwOH0.PuvYESH52fYUacYVNeqGLBc-QtdU-UwJE-6hpIIXFCk';
 
-// Verificação se as credenciais foram carregadas
-if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...SUA_CHAVE_COMPLETA_AQUI') {
-  console.error("⚠️ ERRO: Credenciais do Supabase não configuradas!");
-  console.error("👉 Acesse https://supabase.com/dashboard -> Settings -> API");
-  console.error("👉 Copie a 'anon public' key (começa com eyJ...)");
-}
-
-// URLs das Functions Netlify
-const URL_CRIAR_PREFERENCE = "/.netlify/functions/criar-preference";
-const URL_CALCULAR_FRETE = "/.netlify/functions/calcular-frete";
-
 // Inicializa o cliente Supabase
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
@@ -279,9 +268,6 @@ const supabaseClient = supabase.createClient(
     // Você pega esse ID na tabela 'lojas' do Supabase após cadastrar o cliente
     //Você pega essa Public Key no Mercado Pago do cliente 
     const ID_DA_LOJA = 'e7e8b345-7c79-41cd-a454-befbad2580cc';
-
-
-
 
 
     // ============================================
