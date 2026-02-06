@@ -237,10 +237,16 @@
         urlFuncoes: "" // Ex: "https://seu-site.netlify.app" ou deixe ""
     };
 
-        // Auto-detecta URL das funções se não configurado
-    // Prioriza sempre o mesmo domínio do site para evitar bloqueio de CORS
-    const BASE_URL_FUNCOES = CONFIG.urlFuncoes || window.location.origin;
-    const URL_CRIAR_PREFERENCE = `${BASE_URL_FUNCOES}/.netlify/functions/criar-preference`;
+         // Auto-detecta URL das funções se não configurado
+    // Checkout: prioriza mesmo domínio para evitar CORS no criar-preference
+    const BASE_URL_CHECKOUT = CONFIG.urlFuncoes || window.location.origin;
+    const URL_CRIAR_PREFERENCE = `${BASE_URL_CHECKOUT}/.netlify/functions/criar-preference`;
+
+    // Frete: mantém fallback para o serviço externo quando o domínio atual não expõe funções Netlify
+    const BASE_URL_FRETE = CONFIG.urlFuncoes ||
+        (window.location.hostname.includes('netlify.app')
+            ? window.location.origin
+            : 'https://frete-correios-api.netlify.app');
 
 
     let FRETE_ATUAL = 0; // valor calculado na API
@@ -763,10 +769,11 @@ async function processarPagamento() {
         return;
     }
 
-       if (endereco.includes(', Nº -')) {
+        if (endereco.includes(', Nº -')) {
         mostrarNotificacao('Informe o número do endereço para continuar.', 'error');
         return;
     }
+
 
     // 2. Interface de carregamento
     btn.disabled = true;
@@ -800,7 +807,7 @@ async function processarPagamento() {
             }
         };
 
-               const response = await fetch(URL_CRIAR_PREFERENCE, {
+                    const response = await fetch(URL_CRIAR_PREFERENCE, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -1466,7 +1473,7 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
             <input type="text" id="telCliente" placeholder="WhatsApp / Telefone" value="${state.usuarioAtual?.whatsapp || ''}"
                 class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
 
-                     <textarea id="enderecoEntrega" placeholder="Endereço (ao calcular CEP preenche automático, informe só o número)" rows="2"
+                                 <textarea id="enderecoEntrega" placeholder="Endereço (ao calcular CEP preenche automático, informe só o número)" rows="2"
                 class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm resize-none"></textarea>
         </div>
 
@@ -1475,6 +1482,7 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
             <div class="flex gap-2">
                 <input type="text" id="cep" placeholder="00000-000" maxlength="9" oninput="mascaraCEP(this); buscarEndereco(this.value)"
                     class="flex-1 px-4 py-2 rounded-xl border border-blue-200 outline-none text-sm">
+
                 <button type="button" onclick="calcularFrete()" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase hover:bg-blue-700">Calcular</button>
             </div>
             <div id="freteLoader" class="hidden text-center py-2 animate-pulse text-[10px] text-blue-600 font-bold uppercase tracking-widest">Buscando Opções...</div>
@@ -1553,7 +1561,7 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
             }
         }
 
-                async function buscarEndereco(cep) {
+                    async function buscarEndereco(cep) {
             const cepLimpo = String(cep || '').replace(/\D/g, '');
             if (cepLimpo.length !== 8) return;
 
@@ -1580,6 +1588,7 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
                 console.error('Erro ao buscar endereço por CEP:', error);
             }
         }
+
 
 
         // ============================================
@@ -1918,7 +1927,7 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
                 return;
             }
 
-                        await buscarEndereco(cepDestino);
+                       await buscarEndereco(cepDestino);
             document.getElementById('freteLoader').classList.remove('hidden');
             const payload = {
                 cep_origem: state.CEP_ORIGEM_LOJA || "33233180",
@@ -1934,13 +1943,17 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
 
             try {
                 const response = await fetch(
-                    `${BASE_URL_FUNCOES}/.netlify/functions/frete`,
+                    `${BASE_URL_FRETE}/.netlify/functions/frete`,
                     {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(payload)
                     }
                 );
+
+                if (!response.ok) {
+                    throw new Error(`Falha no frete (${response.status})`);
+                }
 
                 const data = await response.json();
                 document.getElementById('freteLoader').classList.add('hidden');
