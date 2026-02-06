@@ -239,14 +239,9 @@
 
          // Auto-detecta URL das funções se não configurado
     // Checkout: prioriza mesmo domínio para evitar CORS no criar-preference
-    const BASE_URL_CHECKOUT = CONFIG.urlFuncoes || window.location.origin;
-    const URL_CRIAR_PREFERENCE = `${BASE_URL_CHECKOUT}/.netlify/functions/criar-preference`;
+  const URL_CRIAR_PREFERENCE = "/.netlify/functions/criar-preference";
+const URL_CALCULAR_FRETE = "/.netlify/functions/calcular-frete";
 
-    // Frete: mantém fallback para o serviço externo quando o domínio atual não expõe funções Netlify
-    const BASE_URL_FRETE = CONFIG.urlFuncoes ||
-        (window.location.hostname.includes('netlify.app')
-            ? window.location.origin
-            : 'https://frete-correios-api.netlify.app');
 
 
     let FRETE_ATUAL = 0; // valor calculado na API
@@ -1942,14 +1937,12 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
             };
 
             try {
-                const response = await fetch(
-                    `${BASE_URL_FRETE}/.netlify/functions/frete`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload)
-                    }
-                );
+                const response = await fetch("/.netlify/functions/calcular-frete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+});
+
 
                 if (!response.ok) {
                     throw new Error(`Falha no frete (${response.status})`);
