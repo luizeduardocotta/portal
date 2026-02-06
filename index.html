@@ -734,14 +734,33 @@
 
 async function processarPagamento() {
     const btn = document.getElementById('btn-pagar');
-    
-    // 1. Validações Básicas
-    const nome = document.getElementById('nomeCliente')?.value;
-    const tel = document.getElementById('telCliente')?.value;
-    const endereco = document.getElementById('enderecoEntrega')?.value;
 
-    if (!nome || !tel || !endereco) {
-        mostrarNotificacao("Por favor, preencha nome, telefone e endereço.", "error");
+    // 1. Validações Básicas (com fallback do perfil logado)
+    const campoNome = document.getElementById('nomeCliente');
+    const campoTel = document.getElementById('telCliente');
+    const campoEndereco = document.getElementById('enderecoEntrega');
+
+    let nome = (campoNome?.value || '').trim();
+    let tel = (campoTel?.value || '').trim();
+    const endereco = (campoEndereco?.value || '').trim();
+
+    if (!nome && state.usuarioAtual?.nome) {
+        nome = String(state.usuarioAtual.nome).trim();
+        if (campoNome) campoNome.value = nome;
+    }
+
+    if (!tel && state.usuarioAtual?.whatsapp) {
+        tel = String(state.usuarioAtual.whatsapp).trim();
+        if (campoTel) campoTel.value = tel;
+    }
+
+    const faltando = [];
+    if (!nome) faltando.push('nome');
+    if (!tel) faltando.push('telefone');
+    if (!endereco) faltando.push('endereço');
+
+    if (faltando.length) {
+        mostrarNotificacao(`Por favor, preencha: ${faltando.join(', ')}.`, "error");
         return;
     }
 
@@ -777,7 +796,7 @@ async function processarPagamento() {
             // Opcional: Enviar dados do cliente para o Mercado Pago já saber quem é
             payer: {
                 name: nome,
-                phone: { number: tel },
+                phone: { number: tel.replace(/\D/g, '') },
                 address: { street_name: endereco }
             }
         };
@@ -806,6 +825,7 @@ async function processarPagamento() {
         btn.innerHTML = "IR PARA PAGAMENTO SEGURO";
     }
 }
+
     // ============================================
     // 👨‍💼 PAINEL ADMIN
     // ============================================
