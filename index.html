@@ -243,20 +243,26 @@ window.ENV = {
         // Opção 2: Configure manualmente se estiver em domínio próprio
         urlFuncoes: "" // Ex: "https://seu-site.netlify.app" ou deixe ""
     };
+// ============================================
+// 🔧 CONFIGURAÇÃO DO SUPABASE
+// ============================================
 
-     // URLs das Functions
+// Configurações do Supabase (substitua pelos seus valores reais)
+const SUPABASE_URL = 'https://snupieyqdnltivjqctda.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...SUA_CHAVE_COMPLETA_AQUI';
+
+// Verificação se as credenciais foram carregadas
+if (!SUPABASE_URL || !SUPABASE_KEY || SUPABASE_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...SUA_CHAVE_COMPLETA_AQUI') {
+  console.error("⚠️ ERRO: Credenciais do Supabase não configuradas!");
+  console.error("👉 Acesse https://supabase.com/dashboard -> Settings -> API");
+  console.error("👉 Copie a 'anon public' key (começa com eyJ...)");
+}
+
+// URLs das Functions Netlify
 const URL_CRIAR_PREFERENCE = "/.netlify/functions/criar-preference";
 const URL_CALCULAR_FRETE = "/.netlify/functions/calcular-frete";
 
-// Supabase via ENV
-const SUPABASE_URL = window.ENV?.SUPABASE_URL || "";
-const SUPABASE_KEY = window.ENV?.SUPABASE_KEY || "";
-
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error("Supabase ENV não carregado");
-}
-
-
+// Inicializa o cliente Supabase
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY,
@@ -268,7 +274,6 @@ const supabaseClient = supabase.createClient(
     }
   }
 );
-
 
     // IDENTIFICADOR ÚNICO DESTA LOJA
     // Você pega esse ID na tabela 'lojas' do Supabase após cadastrar o cliente
