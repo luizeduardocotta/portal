@@ -218,8 +218,8 @@
 
 <script>
 window.ENV = {
-  SUPABASE_URL: "NETLIFY_VITE_SUPABASE_URL",
-  SUPABASE_KEY: "NETLIFY_VITE_SUPABASE_KEY"
+  SUPABASE_URL: "{{SUPABASE_URL}}",
+  SUPABASE_KEY: "{{VITE_SUPABASE_KEY}}"
 };
 </script>
 
@@ -2107,5 +2107,3 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
 </body>
 
 </html>
-
-
