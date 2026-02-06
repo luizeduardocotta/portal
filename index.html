@@ -1980,67 +1980,6 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
 
 </script>
 
-<script>
-async function processarPagamento() {
-    const btn = document.getElementById('btn-pagar');
-    
-    if (!state.freteSelecionado) {
-        mostrarNotificacao("Por favor, selecione o frete primeiro.", "error");
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = "⏳ Redirecionando para pagamento...";
-
-    try {
-        // Prepara os itens para o Mercado Pago
-        const itensCompra = state.carrinho.map(item => ({
-            title: item.nome,
-            unit_price: Number(item.preco),
-            quantity: Number(item.quantidade),
-            currency_id: "BRL"
-        }));
-
-        // Adiciona o frete
-        itensCompra.push({
-            title: "Frete",
-            unit_price: Number(state.freteSelecionado),
-            quantity: 1,
-            currency_id: "BRL"
-        });
-
-        // O payload agora é simples, sem dados de cartão
-        const payload = {
-            items: itensCompra,
-            loja_id: "e7e8b345-7c79-41cd-a454-befbad2580cc" // Peguei do seu log
-        };
-
-        const response = await fetch("https://frete-correios-api.netlify.app/.netlify/functions/criar-preference", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) throw new Error("Erro na comunicação com a API.");
-
-        const data = await response.json();
-
-        if (data.init_point) {
-            // REDIRECIONA PARA O MERCADO PAGO
-            window.location.href = data.init_point;
-        } else {
-            throw new Error("Link de pagamento não recebido.");
-        }
-
-    } catch (error) {
-        console.error("Erro no checkout:", error);
-        mostrarNotificacao("Erro ao iniciar pagamento. Tente novamente.", "error");
-        btn.disabled = false;
-        btn.innerHTML = "FINALIZAR E PAGAR";
-    }
-}
-</script>
-
 <footer class="bg-gray-900 text-white pt-12 pb-6">
     <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 border-b border-gray-800 pb-8">
         <div>
