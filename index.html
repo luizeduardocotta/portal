@@ -2060,12 +2060,14 @@ Forma de pagamento: PIX / WhatsApp
         try {
             const payload = {
                 // 1. Mapeia os itens do carrinho com limpeza de preço
-                items: state.carrinho.map(item => ({
-                    title: item.nome,
-                    unit_price: normalizarValor(item.preco),
-                    quantity: Number(item.quantidade),
+                items: state.carrinho.map(produto => ({
+                    id: produto.id,                      // 🔥 ESSENCIAL (produto_id)
+                    title: produto.nome,
+                    quantity: Number(produto.quantidade),
+                    unit_price: normalizarValor(produto.preco),
                     currency_id: "BRL"
                 }))
+
                 ,
                 loja_id: ID_DA_LOJA,
                 payer: {
