@@ -752,7 +752,7 @@
                 .from('pedidos')
                 .select('*')
                 .eq('loja_id', ID_DA_LOJA)
-                .order('created_at', { ascending: false });
+                .order('data', { ascending: false })
 
             if (error) {
                 console.error("Erro ao buscar pedidos:", error);
