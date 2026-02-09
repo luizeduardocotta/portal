@@ -834,25 +834,59 @@
     }
 
     // Função para mostrar detalhes do pedido
-    window.mostrarDetalhesPedido = async function (pedidoId) {
-        const { data: pedido, error } = await supabaseClient
-            .from('pedidos')
-            .select('*')
-            .eq('id', pedidoId)
-            .single();
+   window.mostrarDetalhesPedido = async function (pedidoId) {
+    // 1️⃣ Busca pedido
+    const { data: pedido, error } = await supabaseClient
+        .from('pedidos')
+        .select('*')
+        .eq('id', pedidoId)
+        .single();
 
-        if (error || !pedido) {
-            alert('Erro ao carregar detalhes do pedido');
-            return;
-        }
+    if (error || !pedido) {
+        alert('Erro ao carregar pedido');
+        return;
+    }
 
-        const nomeCliente = pedido.nome_cliente || 'N/A';
-        const whatsapp = pedido.whatsapp || 'N/A';
-        const endereco = pedido.endereco || 'Não informado';
-        const tipoFrete = pedido.tipo_frete || 'N/A';
-        const valorFrete = pedido.frete || 0;
+    // 2️⃣ Busca itens reais do pedido
+    const { data: itens, error: erroItens } = await supabaseClient
+        .from('itens_pedido')
+        .select(`
+            quantidade,
+            preco_unitario,
+            produtos ( nome )
+        `)
+        .eq('pedido_id', pedido.id);
 
-        const detalhes = `
+    if (erroItens) {
+        alert('Erro ao carregar itens do pedido');
+        return;
+    }
+
+    // 3️⃣ Calcula subtotal real
+    const subtotal = itens.reduce((acc, item) => {
+        return acc + (item.quantidade * item.preco_unitario);
+    }, 0);
+
+    // 4️⃣ Dados do pedido
+    const nomeCliente = pedido.nome_cliente || 'N/A';
+    const whatsapp = pedido.whatsapp || 'N/A';
+    const endereco = pedido.endereco || 'Não informado';
+    const tipoFrete = pedido.tipo_frete || 'N/A';
+    const valorFrete = pedido.frete || 0;
+
+    // 5️⃣ Lista de produtos
+    const listaItens = itens.length
+        ? itens.map(item => {
+            const nome = item.produtos?.nome || 'Produto';
+            const qtd = item.quantidade;
+            const preco = item.preco_unitario;
+            const total = qtd * preco;
+            return `• ${nome} — ${qtd}x ${formatarMoeda(preco)} = ${formatarMoeda(total)}`;
+        }).join('\n')
+        : 'Nenhum item encontrado';
+
+    // 6️⃣ Modal final
+    const detalhes = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📦 PEDIDO #${pedido.id}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -863,9 +897,10 @@ WhatsApp: ${whatsapp}
 Endereço: ${endereco}
 
 🛍️ ITENS:
-Itens vinculados ao pedido (tabela itens_pedido)
+${listaItens}
 
 💰 VALORES:
+Subtotal: ${formatarMoeda(subtotal)}
 Frete (${tipoFrete}): ${formatarMoeda(valorFrete)}
 TOTAL: ${formatarMoeda(pedido.total)}
 
@@ -877,8 +912,8 @@ Método: ${pedido.metodo_pagamento || 'N/A'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     `;
 
-        alert(detalhes);
-    };
+    alert(detalhes);
+};
 
 
     function getStatusColor(status) {
