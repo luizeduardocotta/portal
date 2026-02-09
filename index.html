@@ -834,86 +834,70 @@
     }
 
     // Função para mostrar detalhes do pedido
-   window.mostrarDetalhesPedido = async function (pedidoId) {
-    // 1️⃣ Busca pedido
-    const { data: pedido, error } = await supabaseClient
-        .from('pedidos')
-        .select('*')
-        .eq('id', pedidoId)
-        .single();
+  window.mostrarDetalhesPedido = async function (pedidoId) {
 
-    if (error || !pedido) {
-        alert('Erro ao carregar pedido');
-        return;
-    }
+  // 1️⃣ Pedido
+  const { data: pedido, error: erroPedido } = await supabaseClient
+    .from('pedidos')
+    .select('*')
+    .eq('id', pedidoId)
+    .single();
 
-    // 2️⃣ Busca itens reais do pedido
-    const { data: itens, error: erroItens } = await supabaseClient
-        .from('itens_pedido')
-        .select(`
-            quantidade,
-            preco_unitario,
-            produtos ( nome )
-        `)
-        .eq('pedido_id', pedido.id);
+  if (erroPedido || !pedido) {
+    alert('Erro ao carregar pedido');
+    return;
+  }
 
-    if (erroItens) {
-        alert('Erro ao carregar itens do pedido');
-        return;
-    }
+  // 2️⃣ Itens reais do pedido
+  const { data: itens, error: erroItens } = await supabaseClient
+    .from('itens_pedido')
+    .select(`
+      quantidade,
+      preco_unitario,
+      produtos ( nome )
+    `)
+    .eq('pedido_id', pedidoId);
 
-    // 3️⃣ Calcula subtotal real
-    const subtotal = itens.reduce((acc, item) => {
-        return acc + (item.quantidade * item.preco_unitario);
-    }, 0);
+  if (erroItens) {
+    alert('Erro ao carregar itens');
+    return;
+  }
 
-    // 4️⃣ Dados do pedido
-    const nomeCliente = pedido.nome_cliente || 'N/A';
-    const whatsapp = pedido.whatsapp || 'N/A';
-    const endereco = pedido.endereco || 'Não informado';
-    const tipoFrete = pedido.tipo_frete || 'N/A';
-    const valorFrete = pedido.frete || 0;
+  // 3️⃣ Subtotal REAL
+  const subtotal = itens.reduce((acc, item) => {
+    return acc + (item.preco_unitario * item.quantidade);
+  }, 0);
 
-    // 5️⃣ Lista de produtos
-    const listaItens = itens.length
-        ? itens.map(item => {
-            const nome = item.produtos?.nome || 'Produto';
-            const qtd = item.quantidade;
-            const preco = item.preco_unitario;
-            const total = qtd * preco;
-            return `• ${nome} — ${qtd}x ${formatarMoeda(preco)} = ${formatarMoeda(total)}`;
-        }).join('\n')
-        : 'Nenhum item encontrado';
-
-    // 6️⃣ Modal final
-    const detalhes = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const detalhes = `
 📦 PEDIDO #${pedido.id}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-👤 CLIENTE:
-Nome: ${nomeCliente}
-WhatsApp: ${whatsapp}
-Endereço: ${endereco}
+👤 Cliente:
+${pedido.nome_cliente || 'N/A'}
+${pedido.whatsapp || ''}
 
-🛍️ ITENS:
-${listaItens}
+🛍️ Itens:
+${itens.map(i =>
+  `• ${i.produtos?.nome || 'Produto'} — ${i.quantidade}x ${formatarMoeda(i.preco_unitario)}`
+).join('\n')}
 
-💰 VALORES:
+💰 Valores:
 Subtotal: ${formatarMoeda(subtotal)}
-Frete (${tipoFrete}): ${formatarMoeda(valorFrete)}
+Frete (${pedido.tipo_frete || 'N/A'}): ${formatarMoeda(pedido.frete || 0)}
 TOTAL: ${formatarMoeda(pedido.total)}
 
-💳 PAGAMENTO:
-Método: ${pedido.metodo_pagamento || 'N/A'}
+💳 Pagamento:
+${pedido.metodo_pagamento || 'N/A'}
 
-📅 Data: ${new Date(pedido.created_at).toLocaleString('pt-BR')}
-🏷️ Status: ${pedido.status}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    `;
+📅 Data:
+${new Date(pedido.data).toLocaleString('pt-BR')}
 
-    alert(detalhes);
+📌 Status:
+${pedido.status}
+`;
+
+  alert(detalhes);
 };
+
 
 
     function getStatusColor(status) {
