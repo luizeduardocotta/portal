@@ -230,6 +230,7 @@
         // valorFrete: 15.00, QUANDO QUISER FRETE FIXO COLOCAR ESSA LINHA ON
         chavePix: "57.066.020/0001-82", // Adicione esta linha
         adminEmail: "luizavantdigital@gmail.com", // Email do administrador
+        enderecoLoja: "Rua Acre, Joá – Lagoa Santa/MG",
 
         // 🌐 URL DAS FUNÇÕES NETLIFY
         // Opção 1: Deixe vazio para auto-detectar (funciona se o site estiver no Netlify)
@@ -1327,6 +1328,46 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
         return texto.length > max ? texto.slice(0, max) + "..." : texto;
     }
 
+    function finalizarPorWhatsApp() {
+        if (state.carrinho.length === 0) {
+            mostrarNotificacao("Carrinho vazio", "error");
+            return;
+        }
+
+        const nome = document.getElementById("nomeCliente")?.value || "Não informado";
+        const tel = document.getElementById("telCliente")?.value || "Não informado";
+        const endereco = document.getElementById("enderecoEntrega")?.value || "Retirada na loja";
+
+        const itens = state.carrinho.map(i =>
+            `• ${i.nome} - ${i.quantidade}x ${formatarMoeda(i.preco)}`
+        ).join("%0A");
+
+        const subtotal = calcularSubtotal();
+        const total = subtotal + (state.freteSelecionado || 0);
+
+        const msg = `
+🛒 *NOVO PEDIDO*
+🏪 ${CONFIG.nomeLoja}
+
+👤 Cliente: ${nome}
+📞 WhatsApp: ${tel}
+📍 Endereço: ${endereco}
+
+📦 Itens:
+${itens}
+
+💰 Subtotal: ${formatarMoeda(subtotal)}
+🚚 Frete: ${formatarMoeda(state.freteSelecionado || 0)}
+💳 TOTAL: ${formatarMoeda(total)}
+
+Forma de pagamento: PIX / WhatsApp
+    `;
+
+        const numeroLoja = CONFIG.chavePix.replace(/\D/g, "");
+        const url = `https://wa.me/55${numeroLoja}?text=${encodeURIComponent(msg)}`;
+        window.open(url, "_blank");
+    }
+
 
     function renderizarCarrinho() {
         const drawer = document.getElementById('cart-drawer');
@@ -1421,6 +1462,12 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
             <span>IR PARA PAGAMENTO SEGURO</span>
             <i data-lucide="external-link" class="w-4 h-4"></i>
         </button>
+        <button onclick="finalizarPorWhatsApp()" 
+    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl mt-3 flex items-center justify-center gap-2">
+    <i data-lucide="message-circle" class="w-5 h-5"></i>
+    Prefiro finalizar pelo WhatsApp
+</button>
+
     </div>
 
     <div class="bg-gray-100 p-4 rounded-2xl space-y-2 mt-4">
@@ -1477,13 +1524,20 @@ ${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''
         const resultado = document.getElementById("resultadoFrete");
         if (resultado) {
             resultado.innerHTML = `
-            <div class="p-3 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold border border-blue-200 flex justify-between items-center">
-                <span>🏪 Retirada na Loja</span>
-                <span>Grátis</span>
+            <div class="p-3 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold border border-blue-200">
+                <div class="flex justify-between items-center">
+                    <span>🏪 Retirada na Loja</span>
+                    <span>Grátis</span>
+                </div>
+                <div class="text-[11px] mt-1 text-blue-900">
+                    Endereço para retirada:<br>
+                    <strong>${CONFIG.enderecoLoja}</strong>
+                </div>
             </div>
         `;
         }
     }
+
 
     function mascaraCEP(input) {
         let v = input.value.replace(/\D/g, "");
