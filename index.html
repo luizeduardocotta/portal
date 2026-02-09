@@ -834,7 +834,7 @@
     }
 
     // Função para mostrar detalhes do pedido
-  window.mostrarDetalhesPedido = async function (pedidoId) {
+ window.mostrarDetalhesPedido = async function (pedidoId) {
 
   // 1️⃣ Pedido
   const { data: pedido, error: erroPedido } = await supabaseClient
@@ -859,40 +859,41 @@
     .eq('pedido_id', pedidoId);
 
   if (erroItens) {
-    alert('Erro ao carregar itens');
+    alert('Erro ao carregar itens do pedido');
     return;
   }
 
-  // 3️⃣ Subtotal REAL
+  // 3️⃣ Subtotal correto
   const subtotal = itens.reduce((acc, item) => {
     return acc + (item.preco_unitario * item.quantidade);
   }, 0);
 
   const detalhes = `
+━━━━━━━━━━━━━━━━━━━━━━
 📦 PEDIDO #${pedido.id}
+━━━━━━━━━━━━━━━━━━━━━━
 
-👤 Cliente:
-${pedido.nome_cliente || 'N/A'}
-${pedido.whatsapp || ''}
+👤 CLIENTE
+Nome: ${pedido.nome_cliente || 'N/A'}
+WhatsApp: ${pedido.whatsapp || 'N/A'}
 
-🛍️ Itens:
-${itens.map(i =>
-  `• ${i.produtos?.nome || 'Produto'} — ${i.quantidade}x ${formatarMoeda(i.preco_unitario)}`
+🛍️ ITENS
+${itens.map(item => 
+  `• ${item.produtos?.nome || 'Produto'} 
+   ${item.quantidade}x ${formatarMoeda(item.preco_unitario)}`
 ).join('\n')}
 
-💰 Valores:
+💰 VALORES
 Subtotal: ${formatarMoeda(subtotal)}
 Frete (${pedido.tipo_frete || 'N/A'}): ${formatarMoeda(pedido.frete || 0)}
 TOTAL: ${formatarMoeda(pedido.total)}
 
-💳 Pagamento:
-${pedido.metodo_pagamento || 'N/A'}
+💳 PAGAMENTO
+Método: ${pedido.metodo_pagamento}
 
-📅 Data:
-${new Date(pedido.data).toLocaleString('pt-BR')}
-
-📌 Status:
-${pedido.status}
+📅 Data: ${new Date(pedido.data).toLocaleString('pt-BR')}
+🏷️ Status: ${pedido.status}
+━━━━━━━━━━━━━━━━━━━━━━
 `;
 
   alert(detalhes);
