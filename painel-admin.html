@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - Pedidos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+        
+        .status-pendente { background: #FEF3C7; color: #92400E; }
+        .status-pago { background: #D1FAE5; color: #065F46; }
+        .status-enviado { background: #DBEAFE; color: #1E40AF; }
+        .status-entregue { background: #E0E7FF; color: #3730A3; }
+        .status-cancelado { background: #FEE2E2; color: #991B1B; }
+        .status-reembolsado { background: #F3F4F6; color: #374151; }
+        
+        .card-pedido {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .card-pedido:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .badge-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 1.5rem;
+            height: 1.5rem;
+            padding: 0 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+<!-- ============================= -->
+<!-- HEADER -->
+<!-- ============================= -->
+<header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">📊 Painel de Pedidos</h1>
+                <p class="text-sm text-gray-500 mt-1" id="nome-loja">Carregando...</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button onclick="atualizarDados()" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Atualizar
+                </button>
+                
+                <button onclick="exportarRelatorio()" 
+                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Exportar
+                </button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- ============================= -->
+<!-- DASHBOARD CARDS -->
+<!-- ============================= -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    
+    <!-- Estatísticas Rápidas -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 font-medium">Total de Pedidos</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-2" id="stat-total">0</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 font-medium">Faturamento</p>
+                    <p class="text-3xl font-bold text-green-600 mt-2" id="stat-faturamento">R$ 0,00</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 font-medium">Aguardando Pagamento</p>
+                    <p class="text-3xl font-bold text-yellow-600 mt-2" id="stat-pendentes">0</p>
+                </div>
+                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 font-medium">Para Enviar</p>
+                    <p class="text-3xl font-bold text-blue-600 mt-2" id="stat-enviar">0</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= -->
+    <!-- TABS DE FILTRO -->
+    <!-- ============================= -->
+    <div class="bg-white rounded-xl shadow-sm mb-6">
+        <div class="border-b border-gray-200">
+            <nav class="flex -mb-px" id="tabs-container">
+                <button onclick="filtrarPorStatus('todos')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-blue-500 text-blue-600"
+                        data-status="todos">
+                    Todos <span class="badge-count ml-2 bg-blue-100 text-blue-600" id="count-todos">0</span>
+                </button>
+                <button onclick="filtrarPorStatus('Pendente')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        data-status="Pendente">
+                    Pendentes <span class="badge-count ml-2 bg-gray-100 text-gray-600" id="count-Pendente">0</span>
+                </button>
+                <button onclick="filtrarPorStatus('Pago')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        data-status="Pago">
+                    Pagos <span class="badge-count ml-2 bg-gray-100 text-gray-600" id="count-Pago">0</span>
+                </button>
+                <button onclick="filtrarPorStatus('Enviado')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        data-status="Enviado">
+                    Enviados <span class="badge-count ml-2 bg-gray-100 text-gray-600" id="count-Enviado">0</span>
+                </button>
+                <button onclick="filtrarPorStatus('Entregue')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        data-status="Entregue">
+                    Entregues <span class="badge-count ml-2 bg-gray-100 text-gray-600" id="count-Entregue">0</span>
+                </button>
+                <button onclick="filtrarPorStatus('Cancelado')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        data-status="Cancelado">
+                    Cancelados <span class="badge-count ml-2 bg-gray-100 text-gray-600" id="count-Cancelado">0</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Busca e Filtros -->
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex gap-3">
+                <div class="flex-1">
+                    <input type="text" 
+                           id="busca-pedido" 
+                           placeholder="Buscar por nome, email, telefone ou ID do pedido..."
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           oninput="buscarPedido()">
+                </div>
+                <select id="ordenar" 
+                        onchange="ordenarPedidos()"
+                        class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="data-desc">Mais recentes</option>
+                    <option value="data-asc">Mais antigos</option>
+                    <option value="valor-desc">Maior valor</option>
+                    <option value="valor-asc">Menor valor</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= -->
+    <!-- LISTA DE PEDIDOS -->
+    <!-- ============================= -->
+    <div id="lista-pedidos" class="space-y-4">
+        <div class="text-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="text-gray-500 mt-4">Carregando pedidos...</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================= -->
+<!-- MODAL DETALHES DO PEDIDO -->
+<!-- ============================= -->
+<div id="modal-pedido" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h2 class="text-xl font-bold text-gray-900" id="modal-titulo">Pedido #0</h2>
+            <button onclick="fecharModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div id="modal-conteudo" class="p-6">
+            <!-- Conteúdo será preenchido dinamicamente -->
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================
+// CONFIGURAÇÃO DO SUPABASE (SUAS CREDENCIAIS)
+// ============================================
+const SUPABASE_URL = 'https://snupieyqdnltivjqctda.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_jYZnNxQ1UsSF_yz2z3d3qA_ET1bqyJ0';
+const LOJA_ID = 'e7e8b345-7c79-41cd-a454-befbad2580cc';
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let todosPedidos = [];
+let pedidosFiltrados = [];
+let statusAtual = 'todos';
+
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+    carregarDados();
+});
+
+// ============================================
+// CARREGAR DADOS
+// ============================================
+async function carregarDados() {
+    try {
+        // Buscar nome da loja
+        const { data: loja } = await supabaseClient
+            .from('lojas')
+            .select('nome_loja')
+            .eq('id', LOJA_ID)
+            .single();
+        
+        if (loja) {
+            document.getElementById('nome-loja').textContent = loja.nome_loja;
+        }
+
+        // Buscar pedidos com itens
+        const { data: pedidos, error } = await supabaseClient
+            .from('pedidos')
+            .select(`
+                *,
+                itens_pedido (
+                    id,
+                    quantidade,
+                    preco_unitario,
+                    produto_id,
+                    produtos (nome)
+                )
+            `)
+            .eq('loja_id', LOJA_ID)
+            .order('data', { ascending: false });
+
+        if (error) throw error;
+
+        todosPedidos = pedidos || [];
+        atualizarEstatisticas();
+        filtrarPorStatus('todos');
+        
+    } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        document.getElementById('lista-pedidos').innerHTML = `
+            <div class="text-center py-12">
+                <p class="text-red-600">❌ Erro ao carregar pedidos: ${error.message}</p>
+                <button onclick="carregarDados()" 
+                        class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Tentar novamente
+                </button>
+            </div>
+        `;
+    }
+}
+
+// ============================================
+// ATUALIZAR ESTATÍSTICAS
+// ============================================
+function atualizarEstatisticas() {
+    const stats = {
+        total: todosPedidos.length,
+        faturamento: todosPedidos
+            .filter(p => p.status === 'Pago' || p.status === 'Enviado' || p.status === 'Entregue')
+            .reduce((sum, p) => sum + parseFloat(p.total || 0), 0),
+        pendentes: todosPedidos.filter(p => p.status === 'Pendente').length,
+        enviar: todosPedidos.filter(p => p.status === 'Pago').length
+    };
+
+    document.getElementById('stat-total').textContent = stats.total;
+    document.getElementById('stat-faturamento').textContent = formatarMoeda(stats.faturamento);
+    document.getElementById('stat-pendentes').textContent = stats.pendentes;
+    document.getElementById('stat-enviar').textContent = stats.enviar;
+
+    // Atualizar contadores das tabs
+    document.getElementById('count-todos').textContent = stats.total;
+    document.getElementById('count-Pendente').textContent = stats.pendentes;
+    document.getElementById('count-Pago').textContent = stats.enviar;
+    document.getElementById('count-Enviado').textContent = todosPedidos.filter(p => p.status === 'Enviado').length;
+    document.getElementById('count-Entregue').textContent = todosPedidos.filter(p => p.status === 'Entregue').length;
+    document.getElementById('count-Cancelado').textContent = todosPedidos.filter(p => p.status === 'Cancelado').length;
+}
+
+// ============================================
+// FILTRAR POR STATUS
+// ============================================
+function filtrarPorStatus(status) {
+    statusAtual = status;
+    
+    // Atualizar tabs
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        if (btn.dataset.status === status) {
+            btn.className = 'tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-blue-500 text-blue-600';
+        } else {
+            btn.className = 'tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+        }
+    });
+
+    // Filtrar pedidos
+    if (status === 'todos') {
+        pedidosFiltrados = [...todosPedidos];
+    } else {
+        pedidosFiltrados = todosPedidos.filter(p => p.status === status);
+    }
+
+    ordenarPedidos();
+}
+
+// ============================================
+// ORDENAR PEDIDOS
+// ============================================
+function ordenarPedidos() {
+    const ordenacao = document.getElementById('ordenar').value;
+    
+    switch(ordenacao) {
+        case 'data-desc':
+            pedidosFiltrados.sort((a, b) => new Date(b.data) - new Date(a.data));
+            break;
+        case 'data-asc':
+            pedidosFiltrados.sort((a, b) => new Date(a.data) - new Date(b.data));
+            break;
+        case 'valor-desc':
+            pedidosFiltrados.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
+            break;
+        case 'valor-asc':
+            pedidosFiltrados.sort((a, b) => parseFloat(a.total) - parseFloat(b.total));
+            break;
+    }
+    
+    renderizarPedidos();
+}
+
+// ============================================
+// BUSCAR PEDIDO
+// ============================================
+function buscarPedido() {
+    const termo = document.getElementById('busca-pedido').value.toLowerCase();
+    
+    if (!termo) {
+        filtrarPorStatus(statusAtual);
+        return;
+    }
+
+    pedidosFiltrados = todosPedidos.filter(p => {
+        return (
+            p.id.toString().includes(termo) ||
+            (p.nome_cliente && p.nome_cliente.toLowerCase().includes(termo)) ||
+            (p.email_cliente && p.email_cliente.toLowerCase().includes(termo)) ||
+            (p.whatsapp && p.whatsapp.includes(termo))
+        );
+    });
+
+    renderizarPedidos();
+}
+
+// ============================================
+// RENDERIZAR PEDIDOS
+// ============================================
+function renderizarPedidos() {
+    const container = document.getElementById('lista-pedidos');
+    
+    if (pedidosFiltrados.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-12">
+                <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                </svg>
+                <p class="text-gray-500 text-lg">Nenhum pedido encontrado</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = pedidosFiltrados.map(pedido => `
+        <div class="card-pedido bg-white rounded-xl shadow-sm p-6 hover:shadow-lg" onclick="abrirModal(${pedido.id})">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                        <h3 class="text-lg font-bold text-gray-900">Pedido #${pedido.id}</h3>
+                        <span class="status-badge status-${pedido.status.toLowerCase()}">
+                            ${getIconeStatus(pedido.status)} ${pedido.status}
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-600">
+                        📅 ${formatarData(pedido.data)}
+                    </p>
+                </div>
+                <div class="text-right">
+                    <p class="text-2xl font-bold text-gray-900">${formatarMoeda(pedido.total)}</p>
+                    <p class="text-xs text-gray-500">+ ${formatarMoeda(pedido.frete)} frete</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+                <div>
+                    <p class="text-xs text-gray-500 mb-1">👤 Cliente</p>
+                    <p class="text-sm font-semibold text-gray-900">${pedido.nome_cliente || 'Não informado'}</p>
+                    ${pedido.email_cliente ? `<p class="text-xs text-gray-600">📧 ${pedido.email_cliente}</p>` : ''}
+                    ${pedido.whatsapp ? `<p class="text-xs text-gray-600">📱 ${formatarTelefone(pedido.whatsapp)}</p>` : ''}
+                </div>
+
+                <div>
+                    <p class="text-xs text-gray-500 mb-1">📍 Endereço</p>
+                    ${pedido.endereco_rua ? `
+                        <p class="text-sm font-medium text-gray-900">${pedido.endereco_rua}, ${pedido.endereco_numero}</p>
+                        <p class="text-xs text-gray-600">${pedido.endereco_bairro}, ${pedido.endereco_cidade}/${pedido.endereco_estado}</p>
+                        <p class="text-xs text-gray-600">CEP: ${formatarCEP(pedido.endereco_cep)}</p>
+                    ` : '<p class="text-xs text-gray-400">Endereço não informado</p>'}
+                </div>
+
+                <div>
+                    <p class="text-xs text-gray-500 mb-1">📦 Envio</p>
+                    ${pedido.tipo_frete ? `
+                        <p class="text-sm font-medium text-gray-900">${pedido.tipo_frete}</p>
+                        <p class="text-xs text-gray-600">${formatarMoeda(pedido.frete)}</p>
+                    ` : '<p class="text-xs text-gray-400">Frete não calculado</p>'}
+                </div>
+            </div>
+
+            ${pedido.itens_pedido && pedido.itens_pedido.length > 0 ? `
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <p class="text-xs text-gray-500 mb-2">🛒 ${pedido.itens_pedido.length} item(ns)</p>
+                    <div class="flex flex-wrap gap-2">
+                        ${pedido.itens_pedido.map(item => `
+                            <span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                ${item.quantidade}x ${item.produtos?.nome || 'Produto'}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+// ============================================
+// ABRIR MODAL COM DETALHES
+// ============================================
+function abrirModal(pedidoId) {
+    const pedido = todosPedidos.find(p => p.id === pedidoId);
+    if (!pedido) return;
+
+    document.getElementById('modal-titulo').textContent = `Pedido #${pedido.id}`;
+    
+    const conteudo = `
+        <!-- Status e Ações -->
+        <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-200">
+            <div>
+                <span class="status-badge status-${pedido.status.toLowerCase()} text-base">
+                    ${getIconeStatus(pedido.status)} ${pedido.status}
+                </span>
+                <p class="text-sm text-gray-500 mt-2">Criado em ${formatarDataCompleta(pedido.data)}</p>
+            </div>
+            <div class="flex gap-2">
+                <select onchange="atualizarStatus(${pedido.id}, this.value)" 
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium">
+                    <option value="">Alterar status...</option>
+                    <option value="Pendente" ${pedido.status === 'Pendente' ? 'disabled' : ''}>⏳ Pendente</option>
+                    <option value="Pago" ${pedido.status === 'Pago' ? 'disabled' : ''}>✅ Pago</option>
+                    <option value="Enviado" ${pedido.status === 'Enviado' ? 'disabled' : ''}>📦 Enviado</option>
+                    <option value="Entregue" ${pedido.status === 'Entregue' ? 'disabled' : ''}>🎉 Entregue</option>
+                    <option value="Cancelado" ${pedido.status === 'Cancelado' ? 'disabled' : ''}>❌ Cancelado</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Informações do Cliente -->
+        <div class="mb-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">👤 Informações do Cliente</h3>
+            <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+                <div class="flex items-start gap-3">
+                    <span class="text-gray-500 font-medium min-w-[100px]">Nome:</span>
+                    <span class="text-gray-900 font-semibold">${pedido.nome_cliente || 'Não informado'}</span>
+                </div>
+                ${pedido.email_cliente ? `
+                    <div class="flex items-start gap-3">
+                        <span class="text-gray-500 font-medium min-w-[100px]">Email:</span>
+                        <a href="mailto:${pedido.email_cliente}" class="text-blue-600 hover:underline">${pedido.email_cliente}</a>
+                    </div>
+                ` : ''}
+                ${pedido.whatsapp ? `
+                    <div class="flex items-start gap-3">
+                        <span class="text-gray-500 font-medium min-w-[100px]">WhatsApp:</span>
+                        <a href="https://wa.me/55${pedido.whatsapp}" target="_blank" 
+                           class="text-green-600 hover:underline flex items-center gap-2">
+                            ${formatarTelefone(pedido.whatsapp)}
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                            </svg>
+                        </a>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+
+        <!-- Endereço de Entrega -->
+        ${pedido.endereco_rua ? `
+            <div class="mb-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">📍 Endereço de Entrega</h3>
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <p class="text-gray-900 font-medium">${pedido.endereco_rua}, ${pedido.endereco_numero}</p>
+                    ${pedido.endereco_complemento ? `<p class="text-gray-700">${pedido.endereco_complemento}</p>` : ''}
+                    <p class="text-gray-700">${pedido.endereco_bairro}</p>
+                    <p class="text-gray-700">${pedido.endereco_cidade} - ${pedido.endereco_estado}</p>
+                    <p class="text-gray-700 font-mono">CEP: ${formatarCEP(pedido.endereco_cep)}</p>
+                    
+                    <a href="https://www.google.com/maps/search/?api=1&query=${pedido.endereco_rua},${pedido.endereco_numero},${pedido.endereco_cidade},${pedido.endereco_estado},${pedido.endereco_cep}" 
+                       target="_blank"
+                       class="inline-flex items-center gap-2 mt-3 text-blue-600 hover:text-blue-700 font-medium">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Ver no Google Maps
+                    </a>
+                </div>
+            </div>
+        ` : ''}
+
+        <!-- Informações de Frete -->
+        ${pedido.tipo_frete ? `
+            <div class="mb-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">📦 Informações de Envio</h3>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-700 font-medium">${pedido.tipo_frete}</span>
+                        <span class="text-gray-900 font-bold">${formatarMoeda(pedido.frete)}</span>
+                    </div>
+                </div>
+            </div>
+        ` : ''}
+
+        <!-- Itens do Pedido -->
+        ${pedido.itens_pedido && pedido.itens_pedido.length > 0 ? `
+            <div class="mb-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">🛒 Itens do Pedido</h3>
+                <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+                    ${pedido.itens_pedido.map(item => `
+                        <div class="flex items-center justify-between py-2 border-b border-gray-200 last:border-0">
+                            <div class="flex-1">
+                                <p class="font-medium text-gray-900">${item.produtos?.nome || 'Produto'}</p>
+                                <p class="text-sm text-gray-500">${item.quantidade}x ${formatarMoeda(item.preco_unitario)}</p>
+                            </div>
+                            <p class="font-bold text-gray-900">${formatarMoeda(item.quantidade * item.preco_unitario)}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+
+        <!-- Resumo do Pedido -->
+        <div class="bg-gray-900 text-white rounded-lg p-6">
+            <h3 class="text-lg font-bold mb-4">💰 Resumo do Pedido</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>${formatarMoeda(parseFloat(pedido.total) - parseFloat(pedido.frete))}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Frete:</span>
+                    <span>${formatarMoeda(pedido.frete)}</span>
+                </div>
+                ${pedido.desconto > 0 ? `
+                    <div class="flex justify-between text-green-400">
+                        <span>Desconto:</span>
+                        <span>- ${formatarMoeda(pedido.desconto)}</span>
+                    </div>
+                ` : ''}
+                <div class="flex justify-between text-xl font-bold pt-2 border-t border-gray-700">
+                    <span>TOTAL:</span>
+                    <span>${formatarMoeda(pedido.total)}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Observações -->
+        ${pedido.observacoes ? `
+            <div class="mt-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">📝 Observações</h3>
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p class="text-gray-700">${pedido.observacoes}</p>
+                </div>
+            </div>
+        ` : ''}
+
+        <!-- Informações de Pagamento -->
+        ${pedido.mp_payment_id ? `
+            <div class="mt-6">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">💳 Informações de Pagamento</h3>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm text-gray-600">ID do Pagamento (Mercado Pago):</p>
+                    <p class="font-mono text-gray-900 font-semibold">${pedido.mp_payment_id}</p>
+                </div>
+            </div>
+        ` : ''}
+    `;
+
+    document.getElementById('modal-conteudo').innerHTML = conteudo;
+    document.getElementById('modal-pedido').classList.remove('hidden');
+}
+
+// ============================================
+// ATUALIZAR STATUS DO PEDIDO
+// ============================================
+async function atualizarStatus(pedidoId, novoStatus) {
+    if (!novoStatus) return;
+
+    try {
+        const { error } = await supabaseClient
+            .from('pedidos')
+            .update({ status: novoStatus })
+            .eq('id', pedidoId);
+
+        if (error) throw error;
+
+        alert(`✅ Status atualizado para: ${novoStatus}`);
+        fecharModal();
+        carregarDados();
+    } catch (error) {
+        alert(`❌ Erro ao atualizar status: ${error.message}`);
+    }
+}
+
+// ============================================
+// FECHAR MODAL
+// ============================================
+function fecharModal() {
+    document.getElementById('modal-pedido').classList.add('hidden');
+}
+
+// ============================================
+// ATUALIZAR DADOS
+// ============================================
+function atualizarDados() {
+    carregarDados();
+}
+
+// ============================================
+// EXPORTAR RELATÓRIO
+// ============================================
+function exportarRelatorio() {
+    const csv = [
+        ['ID', 'Data', 'Cliente', 'Email', 'WhatsApp', 'Status', 'Total', 'Frete', 'Tipo Frete', 'Endereço'].join(';'),
+        ...pedidosFiltrados.map(p => [
+            p.id,
+            formatarDataCSV(p.data),
+            p.nome_cliente || '',
+            p.email_cliente || '',
+            p.whatsapp || '',
+            p.status,
+            p.total,
+            p.frete,
+            p.tipo_frete || '',
+            p.endereco_rua ? `${p.endereco_rua}, ${p.endereco_numero}, ${p.endereco_bairro}, ${p.endereco_cidade}/${p.endereco_estado}` : ''
+        ].join(';'))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `pedidos_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+}
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+function formatarMoeda(valor) {
+    return new Intl.NumberFormat('pt-BR', { 
+        style: 'currency', 
+        currency: 'BRL' 
+    }).format(valor || 0);
+}
+
+function formatarData(data) {
+    return new Date(data).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function formatarDataCompleta(data) {
+    return new Date(data).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function formatarDataCSV(data) {
+    return new Date(data).toLocaleDateString('pt-BR');
+}
+
+function formatarTelefone(tel) {
+    if (!tel) return '';
+    const cleaned = tel.replace(/\D/g, '');
+    if (cleaned.length === 11) {
+        return `(${cleaned.substring(0,2)}) ${cleaned.substring(2,7)}-${cleaned.substring(7)}`;
+    }
+    return tel;
+}
+
+function formatarCEP(cep) {
+    if (!cep) return '';
+    const cleaned = cep.replace(/\D/g, '');
+    if (cleaned.length === 8) {
+        return `${cleaned.substring(0,5)}-${cleaned.substring(5)}`;
+    }
+    return cep;
+}
+
+function getIconeStatus(status) {
+    const icones = {
+        'Pendente': '⏳',
+        'Pago': '✅',
+        'Enviado': '📦',
+        'Entregue': '🎉',
+        'Cancelado': '❌',
+        'Reembolsado': '↩️'
+    };
+    return icones[status] || '📋';
+}
+</script>
+
+</body>
+</html>
