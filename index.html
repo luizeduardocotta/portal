@@ -750,10 +750,7 @@
         try {
             const { data: pedidos, error } = await supabaseClient
                 .from('pedidos')
-                .select(`
-                *,
-                perfis (nome, whatsapp)
-            `)
+                .select('*')
                 .eq('loja_id', ID_DA_LOJA)
                 .order('created_at', { ascending: false });
 
@@ -788,13 +785,12 @@
                     </thead>
                     <tbody>
                         ${pedidos.map(p => {
-                const itens = p.items || [];
-                const dadosEntrega = p.dados_entrega || {};
-                const nomeCliente = dadosEntrega.nome || p.perfis?.nome || 'Sem nome';
-                const whatsapp = dadosEntrega.whatsapp || p.perfis?.whatsapp || 'Sem telefone';
-                const endereco = dadosEntrega.endereco || 'Não informado';
-                const tipoFrete = dadosEntrega.tipo_frete || 'N/A';
-                const valorFrete = dadosEntrega.valor_frete || 0;
+                const nomeCliente = p.nome_cliente || 'Sem nome';
+                const whatsapp = p.whatsapp || 'Sem telefone';
+                const endereco = p.endereco || 'Não informado';
+                const tipoFrete = p.tipo_frete || 'N/A';
+                const valorFrete = p.frete || 0;
+
 
                 return `
                             <tr class="border-b hover:bg-gray-50">
@@ -804,11 +800,11 @@
                                 <td class="px-3 py-2 max-w-xs truncate" title="${endereco}">${endereco}</td>
                                 <td class="px-3 py-2">
                                     <button onclick="mostrarDetalhesPedido(${p.id})" class="text-blue-600 hover:underline text-xs">
-                                        Ver ${itens.length} item(ns)
+                                        Ver itens
                                     </button>
                                 </td>
-                                <td class="px-3 py-2 font-bold">${formatarMoeda(p.valor_total)}</td>
-                                <td class="px-3 py-2 text-xs">${tipoFrete}<br>${formatarMoeda(valorFrete)}</td>
+                                <td class="px-3 py-2 font-bold">${formatarMoeda(p.total)}</td>
+                                <td class="px-3 py-2 text-xs">${tipoFrete}<br>${formatarMoeda(p.total)}</td>
                                 <td class="px-3 py-2">
                                     <span class="px-2 py-1 rounded text-xs font-medium ${getStatusColor(p.status)}">
                                         ${p.status}
@@ -850,9 +846,11 @@
             return;
         }
 
-        const itens = pedido.items || [];
-        const dadosPagamento = pedido.dados_pagamento || {};
-        const dadosEntrega = pedido.dados_entrega || {};
+        const nomeCliente = pedido.nome_cliente || 'N/A';
+        const whatsapp = pedido.whatsapp || 'N/A';
+        const endereco = pedido.endereco || 'Não informado';
+        const tipoFrete = pedido.tipo_frete || 'N/A';
+        const valorFrete = pedido.frete || 0;
 
         const detalhes = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -860,31 +858,27 @@
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 👤 CLIENTE:
-Nome: ${dadosEntrega.nome || 'N/A'}
-WhatsApp: ${dadosEntrega.whatsapp || 'N/A'}
-Endereço: ${dadosEntrega.endereco || 'N/A'}
+Nome: ${nomeCliente}
+WhatsApp: ${whatsapp}
+Endereço: ${endereco}
 
 🛍️ ITENS:
-${itens.map(item => `• ${item.nome} - ${item.quantidade}x ${formatarMoeda(item.preco)} = ${formatarMoeda(item.preco * item.quantidade)}`).join('\n')}
+Itens vinculados ao pedido (tabela itens_pedido)
 
 💰 VALORES:
-Subtotal: ${formatarMoeda(pedido.valor_total - (dadosEntrega.valor_frete || 0))}
-Frete (${dadosEntrega.tipo_frete || 'N/A'}): ${formatarMoeda(dadosEntrega.valor_frete || 0)}
-TOTAL: ${formatarMoeda(pedido.valor_total)}
+Frete (${tipoFrete}): ${formatarMoeda(valorFrete)}
+TOTAL: ${formatarMoeda(pedido.total)}
 
 💳 PAGAMENTO:
-Método: ${pedido.metodo_pagamento}
-${dadosPagamento.payment_method_id ? `Cartão: ${dadosPagamento.payment_method_id}` : ''}
-${dadosPagamento.installments ? `Parcelas: ${dadosPagamento.installments}x` : ''}
+Método: ${pedido.metodo_pagamento || 'N/A'}
 
 📅 Data: ${new Date(pedido.created_at).toLocaleString('pt-BR')}
 🏷️ Status: ${pedido.status}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        `;
+    `;
 
         alert(detalhes);
     };
-
 
 
     function getStatusColor(status) {
