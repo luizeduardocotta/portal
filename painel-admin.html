@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Admin - Pedidos</title>
+    <title>Painel Admin - Portal Lagoa Santa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -49,18 +49,37 @@
             font-size: 0.75rem;
             font-weight: 700;
         }
+
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
 
-<!-- ============================= -->
+<!-- Tela de Carregamento -->
+<div id="loading-screen">
+    <div class="text-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+        <p class="text-gray-600 mt-4 text-lg">Verificando permissões...</p>
+    </div>
+</div>
+
+<!-- Conteúdo Principal (Oculto até verificar admin) -->
+<div id="admin-content" class="hidden">
+
 <!-- HEADER -->
-<!-- ============================= -->
 <header class="bg-white shadow-sm sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">📊 Painel de Pedidos</h1>
+                <h1 class="text-2xl font-bold text-gray-900">📊 Painel Administrativo</h1>
                 <p class="text-sm text-gray-500 mt-1" id="nome-loja">Carregando...</p>
             </div>
             
@@ -80,17 +99,19 @@
                     </svg>
                     Exportar
                 </button>
+
+                <a href="/" 
+                   class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                    Ver Loja
+                </a>
             </div>
         </div>
     </div>
 </header>
 
-<!-- ============================= -->
 <!-- DASHBOARD CARDS -->
-<!-- ============================= -->
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     
-    <!-- Estatísticas Rápidas -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex items-center justify-between">
@@ -149,9 +170,7 @@
         </div>
     </div>
 
-    <!-- ============================= -->
     <!-- TABS DE FILTRO -->
-    <!-- ============================= -->
     <div class="bg-white rounded-xl shadow-sm mb-6">
         <div class="border-b border-gray-200">
             <nav class="flex -mb-px" id="tabs-container">
@@ -210,9 +229,7 @@
         </div>
     </div>
 
-    <!-- ============================= -->
     <!-- LISTA DE PEDIDOS -->
-    <!-- ============================= -->
     <div id="lista-pedidos" class="space-y-4">
         <div class="text-center py-12">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -221,9 +238,7 @@
     </div>
 </div>
 
-<!-- ============================= -->
 <!-- MODAL DETALHES DO PEDIDO -->
-<!-- ============================= -->
 <div id="modal-pedido" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -235,16 +250,16 @@
             </button>
         </div>
         
-        <div id="modal-conteudo" class="p-6">
-            <!-- Conteúdo será preenchido dinamicamente -->
-        </div>
+        <div id="modal-conteudo" class="p-6"></div>
     </div>
 </div>
 
+</div>
+
+<script src="painel-admin-script.js"></script>
+
 <script>
-// ============================================
-// CONFIGURAÇÃO DO SUPABASE (SUAS CREDENCIAIS)
-// ============================================
+// CONFIGURAÇÃO
 const SUPABASE_URL = 'https://snupieyqdnltivjqctda.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_jYZnNxQ1UsSF_yz2z3d3qA_ET1bqyJ0';
 const LOJA_ID = 'e7e8b345-7c79-41cd-a454-befbad2580cc';
@@ -256,29 +271,62 @@ let pedidosFiltrados = [];
 let statusAtual = 'todos';
 
 // ============================================
-// INICIALIZAÇÃO
+// VERIFICAR PERMISSÕES DE ADMIN
 // ============================================
-document.addEventListener('DOMContentLoaded', () => {
-    carregarDados();
+document.addEventListener('DOMContentLoaded', async () => {
+    await verificarPermissoesAdmin();
 });
 
-// ============================================
-// CARREGAR DADOS
-// ============================================
-async function carregarDados() {
+async function verificarPermissoesAdmin() {
     try {
-        // Buscar nome da loja
-        const { data: loja } = await supabaseClient
-            .from('lojas')
-            .select('nome_loja')
-            .eq('id', LOJA_ID)
-            .single();
+        // Verificar se está logado
+        const { data: { session } } = await supabaseClient.auth.getSession();
         
-        if (loja) {
-            document.getElementById('nome-loja').textContent = loja.nome_loja;
+        if (!session) {
+            alert('Você precisa fazer login para acessar o painel administrativo!');
+            window.location.href = '/';
+            return;
         }
 
-        // Buscar pedidos com itens
+        const usuarioEmail = session.user.email;
+
+        // Verificar se é admin da loja
+        const { data: loja, error } = await supabaseClient
+            .from('lojas')
+            .select('nome_loja, email_admin')
+            .eq('id', LOJA_ID)
+            .single();
+
+        if (error || !loja) {
+            throw new Error('Loja não encontrada');
+        }
+
+        // Verificar se o email do usuário é o admin
+        if (loja.email_admin !== usuarioEmail) {
+            alert('🚫 Acesso negado! Você não tem permissão de administrador.');
+            window.location.href = '/meus-pedidos.html'; // Redireciona para área do cliente
+            return;
+        }
+
+        // É ADMIN! Mostrar painel
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('admin-content').classList.remove('hidden');
+        document.getElementById('nome-loja').textContent = loja.nome_loja;
+        
+        carregarDados();
+
+    } catch (error) {
+        console.error('Erro ao verificar permissões:', error);
+        alert('Erro ao verificar permissões. Redirecionando...');
+        window.location.href = '/';
+    }
+}
+
+// [RESTO DO CÓDIGO DO PAINEL - IGUAL AO PAINEL-ADMIN-MELHORADO.HTML]
+// (Copiando as funções para não duplicar código)
+
+async function carregarDados() {
+    try {
         const { data: pedidos, error } = await supabaseClient
             .from('pedidos')
             .select(`
@@ -314,9 +362,6 @@ async function carregarDados() {
     }
 }
 
-// ============================================
-// ATUALIZAR ESTATÍSTICAS
-// ============================================
 function atualizarEstatisticas() {
     const stats = {
         total: todosPedidos.length,
@@ -332,7 +377,6 @@ function atualizarEstatisticas() {
     document.getElementById('stat-pendentes').textContent = stats.pendentes;
     document.getElementById('stat-enviar').textContent = stats.enviar;
 
-    // Atualizar contadores das tabs
     document.getElementById('count-todos').textContent = stats.total;
     document.getElementById('count-Pendente').textContent = stats.pendentes;
     document.getElementById('count-Pago').textContent = stats.enviar;
@@ -341,13 +385,9 @@ function atualizarEstatisticas() {
     document.getElementById('count-Cancelado').textContent = todosPedidos.filter(p => p.status === 'Cancelado').length;
 }
 
-// ============================================
-// FILTRAR POR STATUS
-// ============================================
 function filtrarPorStatus(status) {
     statusAtual = status;
     
-    // Atualizar tabs
     document.querySelectorAll('.tab-button').forEach(btn => {
         if (btn.dataset.status === status) {
             btn.className = 'tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-blue-500 text-blue-600';
@@ -356,7 +396,6 @@ function filtrarPorStatus(status) {
         }
     });
 
-    // Filtrar pedidos
     if (status === 'todos') {
         pedidosFiltrados = [...todosPedidos];
     } else {
@@ -366,9 +405,6 @@ function filtrarPorStatus(status) {
     ordenarPedidos();
 }
 
-// ============================================
-// ORDENAR PEDIDOS
-// ============================================
 function ordenarPedidos() {
     const ordenacao = document.getElementById('ordenar').value;
     
@@ -390,9 +426,6 @@ function ordenarPedidos() {
     renderizarPedidos();
 }
 
-// ============================================
-// BUSCAR PEDIDO
-// ============================================
 function buscarPedido() {
     const termo = document.getElementById('busca-pedido').value.toLowerCase();
     
@@ -413,9 +446,6 @@ function buscarPedido() {
     renderizarPedidos();
 }
 
-// ============================================
-// RENDERIZAR PEDIDOS
-// ============================================
 function renderizarPedidos() {
     const container = document.getElementById('lista-pedidos');
     
@@ -441,9 +471,7 @@ function renderizarPedidos() {
                             ${getIconeStatus(pedido.status)} ${pedido.status}
                         </span>
                     </div>
-                    <p class="text-sm text-gray-600">
-                        📅 ${formatarData(pedido.data)}
-                    </p>
+                    <p class="text-sm text-gray-600">📅 ${formatarData(pedido.data)}</p>
                 </div>
                 <div class="text-right">
                     <p class="text-2xl font-bold text-gray-900">${formatarMoeda(pedido.total)}</p>
@@ -493,9 +521,6 @@ function renderizarPedidos() {
     `).join('');
 }
 
-// ============================================
-// ABRIR MODAL COM DETALHES
-// ============================================
 function abrirModal(pedidoId) {
     const pedido = todosPedidos.find(p => p.id === pedidoId);
     if (!pedido) return;
@@ -503,7 +528,6 @@ function abrirModal(pedidoId) {
     document.getElementById('modal-titulo').textContent = `Pedido #${pedido.id}`;
     
     const conteudo = `
-        <!-- Status e Ações -->
         <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-200">
             <div>
                 <span class="status-badge status-${pedido.status.toLowerCase()} text-base">
@@ -524,7 +548,6 @@ function abrirModal(pedidoId) {
             </div>
         </div>
 
-        <!-- Informações do Cliente -->
         <div class="mb-6">
             <h3 class="text-lg font-bold text-gray-900 mb-4">👤 Informações do Cliente</h3>
             <div class="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -553,7 +576,6 @@ function abrirModal(pedidoId) {
             </div>
         </div>
 
-        <!-- Endereço de Entrega -->
         ${pedido.endereco_rua ? `
             <div class="mb-6">
                 <h3 class="text-lg font-bold text-gray-900 mb-4">📍 Endereço de Entrega</h3>
@@ -577,7 +599,6 @@ function abrirModal(pedidoId) {
             </div>
         ` : ''}
 
-        <!-- Informações de Frete -->
         ${pedido.tipo_frete ? `
             <div class="mb-6">
                 <h3 class="text-lg font-bold text-gray-900 mb-4">📦 Informações de Envio</h3>
@@ -590,7 +611,6 @@ function abrirModal(pedidoId) {
             </div>
         ` : ''}
 
-        <!-- Itens do Pedido -->
         ${pedido.itens_pedido && pedido.itens_pedido.length > 0 ? `
             <div class="mb-6">
                 <h3 class="text-lg font-bold text-gray-900 mb-4">🛒 Itens do Pedido</h3>
@@ -608,7 +628,6 @@ function abrirModal(pedidoId) {
             </div>
         ` : ''}
 
-        <!-- Resumo do Pedido -->
         <div class="bg-gray-900 text-white rounded-lg p-6">
             <h3 class="text-lg font-bold mb-4">💰 Resumo do Pedido</h3>
             <div class="space-y-2">
@@ -633,7 +652,6 @@ function abrirModal(pedidoId) {
             </div>
         </div>
 
-        <!-- Observações -->
         ${pedido.observacoes ? `
             <div class="mt-6">
                 <h3 class="text-lg font-bold text-gray-900 mb-4">📝 Observações</h3>
@@ -643,7 +661,6 @@ function abrirModal(pedidoId) {
             </div>
         ` : ''}
 
-        <!-- Informações de Pagamento -->
         ${pedido.mp_payment_id ? `
             <div class="mt-6">
                 <h3 class="text-lg font-bold text-gray-900 mb-4">💳 Informações de Pagamento</h3>
@@ -659,9 +676,6 @@ function abrirModal(pedidoId) {
     document.getElementById('modal-pedido').classList.remove('hidden');
 }
 
-// ============================================
-// ATUALIZAR STATUS DO PEDIDO
-// ============================================
 async function atualizarStatus(pedidoId, novoStatus) {
     if (!novoStatus) return;
 
@@ -681,23 +695,14 @@ async function atualizarStatus(pedidoId, novoStatus) {
     }
 }
 
-// ============================================
-// FECHAR MODAL
-// ============================================
 function fecharModal() {
     document.getElementById('modal-pedido').classList.add('hidden');
 }
 
-// ============================================
-// ATUALIZAR DADOS
-// ============================================
 function atualizarDados() {
     carregarDados();
 }
 
-// ============================================
-// EXPORTAR RELATÓRIO
-// ============================================
 function exportarRelatorio() {
     const csv = [
         ['ID', 'Data', 'Cliente', 'Email', 'WhatsApp', 'Status', 'Total', 'Frete', 'Tipo Frete', 'Endereço'].join(';'),
@@ -722,33 +727,19 @@ function exportarRelatorio() {
     link.click();
 }
 
-// ============================================
-// FUNÇÕES AUXILIARES
-// ============================================
 function formatarMoeda(valor) {
-    return new Intl.NumberFormat('pt-BR', { 
-        style: 'currency', 
-        currency: 'BRL' 
-    }).format(valor || 0);
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
 }
 
 function formatarData(data) {
     return new Date(data).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
 }
 
 function formatarDataCompleta(data) {
     return new Date(data).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
 }
 
@@ -776,12 +767,8 @@ function formatarCEP(cep) {
 
 function getIconeStatus(status) {
     const icones = {
-        'Pendente': '⏳',
-        'Pago': '✅',
-        'Enviado': '📦',
-        'Entregue': '🎉',
-        'Cancelado': '❌',
-        'Reembolsado': '↩️'
+        'Pendente': '⏳', 'Pago': '✅', 'Enviado': '📦', 
+        'Entregue': '🎉', 'Cancelado': '❌', 'Reembolsado': '↩️'
     };
     return icones[status] || '📋';
 }
