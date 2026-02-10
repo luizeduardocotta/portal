@@ -279,46 +279,53 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function verificarPermissoesAdmin() {
     try {
-        // Verificar se está logado
+        // 1. Verifica se existe uma sessão ativa
         const { data: { session } } = await supabaseClient.auth.getSession();
         
         if (!session) {
-            alert('Você precisa fazer login para acessar o painel administrativo!');
-            window.location.href = '/';
+            console.log("Nenhuma sessão encontrada. Redirecionando...");
+            window.location.href = 'index.html'; // Caminho da sua página de login/loja
             return;
         }
 
-        const usuarioEmail = session.user.email;
+        const usuarioId = session.user.id;
 
-        // Verificar se é admin da loja
-        const { data: loja, error } = await supabaseClient
+        // 2. Busca o perfil do usuário para confirmar se é admin
+        // Aqui usamos a tabela 'perfis' que é o padrão que você usa no index
+        const { data: perfil, error: perfilError } = await supabaseClient
+            .from('perfis')
+            .select('is_admin')
+            .eq('id', usuarioId)
+            .single();
+
+        // 3. Se houver erro ou não for admin, bloqueia o acesso
+        if (perfilError || !perfil || !perfil.is_admin) {
+            alert('🚫 Acesso negado! Este painel é restrito a administradores.');
+            window.location.href = 'index.html';
+            return;
+        }
+
+        // 4. Se chegou aqui, ele é ADMIN. Vamos carregar os dados da loja.
+        const { data: loja, error: lojaError } = await supabaseClient
             .from('lojas')
-            .select('nome_loja, email_admin')
+            .select('nome_loja')
             .eq('id', LOJA_ID)
             .single();
 
-        if (error || !loja) {
-            throw new Error('Loja não encontrada');
-        }
-
-        // Verificar se o email do usuário é o admin
-        if (loja.email_admin !== usuarioEmail) {
-            alert('🚫 Acesso negado! Você não tem permissão de administrador.');
-            window.location.href = '/meus-pedidos.html'; // Redireciona para área do cliente
-            return;
-        }
-
-        // É ADMIN! Mostrar painel
+        // É ADMIN! Liberar a tela e ocultar o loading
         document.getElementById('loading-screen').style.display = 'none';
         document.getElementById('admin-content').classList.remove('hidden');
-        document.getElementById('nome-loja').textContent = loja.nome_loja;
         
+        if (loja) {
+            document.getElementById('nome-loja').textContent = loja.nome_loja;
+        }
+        
+        // Inicia o carregamento dos pedidos
         carregarDados();
 
     } catch (error) {
-        console.error('Erro ao verificar permissões:', error);
-        alert('Erro ao verificar permissões. Redirecionando...');
-        window.location.href = '/';
+        console.error('Erro crítico na verificação:', error);
+        window.location.href = 'index.html';
     }
 }
 
@@ -776,3 +783,4 @@ function getIconeStatus(status) {
 
 </body>
 </html>
+
