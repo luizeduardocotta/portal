@@ -486,21 +486,23 @@
 
             // HTML padronizado: Nome em destaque e telefone pequeno abaixo
             if (userDisplay) {
-                userDisplay.innerHTML = `
-                   <div class="flex items-center gap-3">
-                        <a href="https://portallagoasanta.com.br/meus-pedidos" 
-                           class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full transition-all border border-gray-200">
-                            <i data-lucide="package" class="w-4 h-4"></i>
-                            <span class="text-xs font-semibold">Meus Pedidos</span>
-                        </a>
+    userDisplay.innerHTML = `
+        <div class="flex items-center gap-3">
+            <button onclick="redirecionarMeusPedidos()" 
+               class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full transition-all border border-gray-200 cursor-pointer">
+                <i data-lucide="package" class="w-4 h-4"></i>
+                <span class="text-xs font-semibold">Meus Pedidos</span>
+            </button>
 
-                        <div class="flex flex-col items-end leading-tight border-l pl-3 border-gray-200">
-                            <span class="text-sm font-bold text-gray-900">${primeiroNome}</span>
-                            <span class="text-[10px] text-green-600 font-medium">${telefoneFormatado}</span>
-                        </div>
-                    </div>
-                   `;
-            }
+            <div class="flex flex-col items-end leading-tight border-l pl-3 border-gray-200">
+                <span class="text-sm font-bold text-gray-900">${primeiroNome}</span>
+                <span class="text-[10px] text-green-600 font-medium">${telefoneFormatado}</span>
+            </div>
+        </div>
+    `;
+    // Reinicia os ícones do Lucide para o novo botão aparecer
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
 
             btnLogin.classList.add('hidden');
             btnLogout.classList.remove('hidden');
@@ -526,6 +528,22 @@
             if (lojaView) lojaView.classList.remove('hidden');
         }
     }
+
+   function redirecionarMeusPedidos() {
+    // Se não houver usuário logado no estado, manda para a página de pedidos/login
+    if (!state.usuarioAtual) {
+        window.location.href = 'https://portallagoasanta.com.br/meus-pedidos';
+        return;
+    }
+
+    // Se o estado já diz que é admin, redireciona direto sem consultar o banco de novo
+    if (state.isAdmin) {
+        window.location.href = 'https://portallagoasanta.com.br/painel-admin';
+    } else {
+        window.location.href = 'https://portallagoasanta.com.br/meus-pedidos';
+    }
+}
+
     function toggleAuthMode() {
         state.modoAuth = state.modoAuth === 'login' ? 'cadastro' : 'login';
         const isLogin = state.modoAuth === 'login';
