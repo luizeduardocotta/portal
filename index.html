@@ -487,10 +487,18 @@
             // HTML padronizado: Nome em destaque e telefone pequeno abaixo
             if (userDisplay) {
                 userDisplay.innerHTML = `
-                   <div class="flex flex-col items-end mr-3 leading-tight">
-                    <span class="text-sm font-bold text-gray-900">${primeiroNome}</span>
-                    <span class="text-[10px] text-green-600 font-medium">${telefoneFormatado}</span>
-                   </div>
+                   <div class="flex items-center gap-3">
+                        <a href="https://portallagoasanta.com.br/meus-pedidos" 
+                           class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full transition-all border border-gray-200">
+                            <i data-lucide="package" class="w-4 h-4"></i>
+                            <span class="text-xs font-semibold">Meus Pedidos</span>
+                        </a>
+
+                        <div class="flex flex-col items-end leading-tight border-l pl-3 border-gray-200">
+                            <span class="text-sm font-bold text-gray-900">${primeiroNome}</span>
+                            <span class="text-[10px] text-green-600 font-medium">${telefoneFormatado}</span>
+                        </div>
+                    </div>
                    `;
             }
 
@@ -1889,18 +1897,23 @@ Forma de pagamento: PIX / WhatsApp
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 py-6">
-        <!-- Tabs -->
-        <div class="flex gap-2 mb-6">
-            <button id="admin-tab-pedidos" onclick="switchAdminTab('pedidos')"
-                class="px-6 py-3 rounded-lg font-medium transition-all bg-black text-white">
-                Pedidos
-            </button>
-            <button id="admin-tab-produtos" onclick="switchAdminTab('produtos')"
-                class="px-6 py-3 rounded-lg font-medium transition-all bg-white text-gray-700 hover:bg-gray-100">
-                Produtos
-            </button>
-        </div>
+    <div class="flex gap-2 mb-6">
+    <button id="admin-tab-dashboard" 
+        onclick="window.location.href='https://portallagoasanta.com.br/painel-admin'"
+        class="px-6 py-3 rounded-lg font-medium transition-all bg-green text-white">
+        Dashboard
+    </button>
+    
+    <button id="admin-tab-pedidos" onclick="switchAdminTab('pedidos')"
+        class="px-6 py-3 rounded-lg font-medium transition-all bg-black text-white">
+        Pedidos
+    </button>
+    
+    <button id="admin-tab-produtos" onclick="switchAdminTab('produtos')"
+        class="px-6 py-3 rounded-lg font-medium transition-all bg-white text-gray-700 hover:bg-gray-100">
+        Produtos
+    </button>
+</div>
 
         <!-- Seção Pedidos -->
         <div id="admin-sec-pedidos" class="bg-white rounded-2xl shadow-sm p-6">
