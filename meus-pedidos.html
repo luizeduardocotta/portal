@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Pedidos - Portal Lagoa Santa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+        
+        .status-pendente { background: #FEF3C7; color: #92400E; }
+        .status-pago { background: #D1FAE5; color: #065F46; }
+        .status-enviado { background: #DBEAFE; color: #1E40AF; }
+        .status-entregue { background: #E0E7FF; color: #3730A3; }
+        .status-cancelado { background: #FEE2E2; color: #991B1B; }
+        
+        .card-pedido {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .card-pedido:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+<!-- Header -->
+<header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">📦 Meus Pedidos</h1>
+                <p class="text-sm text-gray-500 mt-1" id="nome-usuario">Carregando...</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <a href="/" 
+                   class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Voltar para a loja
+                </a>
+                
+                <button onclick="logout()" 
+                        class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                    Sair
+                </button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Conteúdo Principal -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    
+    <!-- Resumo -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 font-medium">Total de Pedidos</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-2" id="stat-total">0</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 font-medium">Total Gasto</p>
+                    <p class="text-3xl font-bold text-green-600 mt-2" id="stat-total-gasto">R$ 0,00</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500 font-medium">Em Andamento</p>
+                    <p class="text-3xl font-bold text-blue-600 mt-2" id="stat-andamento">0</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-xl shadow-sm mb-6">
+        <div class="border-b border-gray-200">
+            <nav class="flex">
+                <button onclick="filtrarPorStatus('todos')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-blue-500 text-blue-600"
+                        data-status="todos">
+                    Todos
+                </button>
+                <button onclick="filtrarPorStatus('Pendente')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        data-status="Pendente">
+                    Pendentes
+                </button>
+                <button onclick="filtrarPorStatus('Pago')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        data-status="Pago">
+                    Pagos
+                </button>
+                <button onclick="filtrarPorStatus('Enviado')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        data-status="Enviado">
+                    Enviados
+                </button>
+                <button onclick="filtrarPorStatus('Entregue')" 
+                        class="tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        data-status="Entregue">
+                    Entregues
+                </button>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Lista de Pedidos -->
+    <div id="lista-pedidos" class="space-y-4">
+        <div class="text-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="text-gray-500 mt-4">Carregando seus pedidos...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalhes -->
+<div id="modal-pedido" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <h2 class="text-xl font-bold text-gray-900" id="modal-titulo">Pedido #0</h2>
+            <button onclick="fecharModal()" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div id="modal-conteudo" class="p-6"></div>
+    </div>
+</div>
+
+<script>
+// Configuração
+const SUPABASE_URL = 'https://snupieyqdnltivjqctda.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_jYZnNxQ1UsSF_yz2z3d3qA_ET1bqyJ0';
+const LOJA_ID = 'e7e8b345-7c79-41cd-a454-befbad2580cc';
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let meusPedidos = [];
+let pedidosFiltrados = [];
+let usuarioAtual = null;
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', async () => {
+    await verificarAutenticacao();
+});
+
+// Verificar se está logado
+async function verificarAutenticacao() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    
+    if (!session) {
+        alert('Você precisa fazer login para ver seus pedidos!');
+        window.location.href = '/';
+        return;
+    }
+
+    usuarioAtual = session.user;
+    
+    // Buscar perfil
+    const { data: perfil } = await supabaseClient
+        .from('perfis')
+        .select('*')
+        .eq('id', usuarioAtual.id)
+        .single();
+    
+    if (perfil) {
+        document.getElementById('nome-usuario').textContent = perfil.nome || usuarioAtual.email;
+    }
+
+    carregarMeusPedidos();
+}
+
+// Carregar pedidos do usuário
+async function carregarMeusPedidos() {
+    try {
+        const { data: pedidos, error } = await supabaseClient
+            .from('pedidos')
+            .select(`
+                *,
+                itens_pedido (
+                    id,
+                    quantidade,
+                    preco_unitario,
+                    produto_id,
+                    produtos (nome)
+                )
+            `)
+            .eq('loja_id', LOJA_ID)
+            .eq('email_cliente', usuarioAtual.email)
+            .order('data', { ascending: false });
+
+        if (error) throw error;
+
+        meusPedidos = pedidos || [];
+        atualizarEstatisticas();
+        filtrarPorStatus('todos');
+        
+    } catch (error) {
+        console.error('Erro ao carregar pedidos:', error);
+        document.getElementById('lista-pedidos').innerHTML = `
+            <div class="text-center py-12">
+                <p class="text-red-600">❌ Erro ao carregar pedidos: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Atualizar estatísticas
+function atualizarEstatisticas() {
+    const stats = {
+        total: meusPedidos.length,
+        totalGasto: meusPedidos
+            .filter(p => p.status === 'Pago' || p.status === 'Enviado' || p.status === 'Entregue')
+            .reduce((sum, p) => sum + parseFloat(p.total || 0), 0),
+        andamento: meusPedidos.filter(p => 
+            p.status === 'Pendente' || p.status === 'Pago' || p.status === 'Enviado'
+        ).length
+    };
+
+    document.getElementById('stat-total').textContent = stats.total;
+    document.getElementById('stat-total-gasto').textContent = formatarMoeda(stats.totalGasto);
+    document.getElementById('stat-andamento').textContent = stats.andamento;
+}
+
+// Filtrar por status
+function filtrarPorStatus(status) {
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        if (btn.dataset.status === status) {
+            btn.className = 'tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-blue-500 text-blue-600';
+        } else {
+            btn.className = 'tab-button flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+        }
+    });
+
+    if (status === 'todos') {
+        pedidosFiltrados = [...meusPedidos];
+    } else {
+        pedidosFiltrados = meusPedidos.filter(p => p.status === status);
+    }
+
+    renderizarPedidos();
+}
+
+// Renderizar pedidos
+function renderizarPedidos() {
+    const container = document.getElementById('lista-pedidos');
+    
+    if (pedidosFiltrados.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-12">
+                <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                </svg>
+                <p class="text-gray-500 text-lg">Você ainda não fez nenhum pedido</p>
+                <a href="/" class="mt-4 inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Ir para a loja
+                </a>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = pedidosFiltrados.map(pedido => `
+        <div class="card-pedido bg-white rounded-xl shadow-sm p-6 hover:shadow-lg" onclick="abrirModal(${pedido.id})">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                        <h3 class="text-lg font-bold text-gray-900">Pedido #${pedido.id}</h3>
+                        <span class="status-badge status-${pedido.status.toLowerCase()}">
+                            ${getIconeStatus(pedido.status)} ${pedido.status}
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-600">📅 ${formatarData(pedido.data)}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-2xl font-bold text-gray-900">${formatarMoeda(pedido.total)}</p>
+                    <p class="text-xs text-gray-500">+ ${formatarMoeda(pedido.frete)} frete</p>
+                </div>
+            </div>
+
+            ${pedido.itens_pedido && pedido.itens_pedido.length > 0 ? `
+                <div class="pt-4 border-t border-gray-100">
+                    <p class="text-xs text-gray-500 mb-2">🛒 ${pedido.itens_pedido.length} item(ns)</p>
+                    <div class="flex flex-wrap gap-2">
+                        ${pedido.itens_pedido.map(item => `
+                            <span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                ${item.quantidade}x ${item.produtos?.nome || 'Produto'}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+// Abrir modal
+function abrirModal(pedidoId) {
+    const pedido = meusPedidos.find(p => p.id === pedidoId);
+    if (!pedido) return;
+
+    document.getElementById('modal-titulo').textContent = `Pedido #${pedido.id}`;
+    
+    const conteudo = `
+        <div class="space-y-6">
+            <!-- Status -->
+            <div class="flex items-center justify-between pb-4 border-b">
+                <div>
+                    <span class="status-badge status-${pedido.status.toLowerCase()} text-base">
+                        ${getIconeStatus(pedido.status)} ${pedido.status}
+                    </span>
+                    <p class="text-sm text-gray-500 mt-2">Realizado em ${formatarDataCompleta(pedido.data)}</p>
+                </div>
+            </div>
+
+            <!-- Endereço de Entrega -->
+            ${pedido.endereco_rua ? `
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-3">📍 Endereço de Entrega</h3>
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <p class="text-gray-900 font-medium">${pedido.endereco_rua}, ${pedido.endereco_numero}</p>
+                        ${pedido.endereco_complemento ? `<p class="text-gray-700">${pedido.endereco_complemento}</p>` : ''}
+                        <p class="text-gray-700">${pedido.endereco_bairro}</p>
+                        <p class="text-gray-700">${pedido.endereco_cidade} - ${pedido.endereco_estado}</p>
+                        <p class="text-gray-700 font-mono">CEP: ${formatarCEP(pedido.endereco_cep)}</p>
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Tipo de Frete -->
+            ${pedido.tipo_frete ? `
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-3">📦 Envio</h3>
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="flex justify-between">
+                            <span class="text-gray-700 font-medium">${pedido.tipo_frete}</span>
+                            <span class="text-gray-900 font-bold">${formatarMoeda(pedido.frete)}</span>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Itens -->
+            ${pedido.itens_pedido && pedido.itens_pedido.length > 0 ? `
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-3">🛒 Itens</h3>
+                    <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+                        ${pedido.itens_pedido.map(item => `
+                            <div class="flex justify-between py-2 border-b border-gray-200 last:border-0">
+                                <div>
+                                    <p class="font-medium text-gray-900">${item.produtos?.nome || 'Produto'}</p>
+                                    <p class="text-sm text-gray-500">${item.quantidade}x ${formatarMoeda(item.preco_unitario)}</p>
+                                </div>
+                                <p class="font-bold text-gray-900">${formatarMoeda(item.quantidade * item.preco_unitario)}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Resumo -->
+            <div class="bg-gray-900 text-white rounded-lg p-6">
+                <h3 class="text-lg font-bold mb-4">💰 Resumo</h3>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span>${formatarMoeda(parseFloat(pedido.total) - parseFloat(pedido.frete))}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Frete:</span>
+                        <span>${formatarMoeda(pedido.frete)}</span>
+                    </div>
+                    <div class="flex justify-between text-xl font-bold pt-2 border-t border-gray-700">
+                        <span>TOTAL:</span>
+                        <span>${formatarMoeda(pedido.total)}</span>
+                    </div>
+                </div>
+            </div>
+
+            ${pedido.observacoes ? `
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-3">📝 Suas Observações</h3>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p class="text-gray-700">${pedido.observacoes}</p>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    document.getElementById('modal-conteudo').innerHTML = conteudo;
+    document.getElementById('modal-pedido').classList.remove('hidden');
+}
+
+function fecharModal() {
+    document.getElementById('modal-pedido').classList.add('hidden');
+}
+
+async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = '/';
+}
+
+// Funções auxiliares
+function formatarMoeda(valor) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
+}
+
+function formatarData(data) {
+    return new Date(data).toLocaleDateString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+}
+
+function formatarDataCompleta(data) {
+    return new Date(data).toLocaleDateString('pt-BR', {
+        day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+}
+
+function formatarCEP(cep) {
+    if (!cep) return '';
+    const cleaned = cep.replace(/\D/g, '');
+    return cleaned.length === 8 ? `${cleaned.substring(0,5)}-${cleaned.substring(5)}` : cep;
+}
+
+function getIconeStatus(status) {
+    const icones = {
+        'Pendente': '⏳', 'Pago': '✅', 'Enviado': '📦', 
+        'Entregue': '🎉', 'Cancelado': '❌'
+    };
+    return icones[status] || '📋';
+}
+</script>
+
+</body>
+</html>
