@@ -1834,44 +1834,41 @@ Forma de pagamento: PIX / WhatsApp
 
 <!-- VIEW: LOJA -->
 <div id="loja-view">
-    <!-- Header -->
-    <header class="bg-white shadow-sm sticky top-0 z-40">
+    <header class="shadow-sm sticky top-0 z-40 bg-[#0052cc]">
         <div class="max-w-7xl mx-auto px-4 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <img id="logo-loja" src="img/logo.webp" class="h-28 w-28 object-cover rounded-full"
+                    <img id="logo-loja" src="img/logo.webp" class="h-28 w-28 object-cover rounded-full border-2 border-white/20"
                         alt="Logo da loja">
-
                 </div>
 
-                   <!-- Busca -->
-   
-        <div class="max-w-7xl mx-auto px-4 py-6">
-            <div class="relative">
-                <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
-                <input type="text" placeholder="Buscar produtos..."
-                    oninput="state.buscaTexto = this.value; renderizar();" class="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-full
-                           focus:ring-2 focus:ring-black focus:border-transparent
-                           shadow-sm transition-all">
-            </div>
-        </div>
-  
+                <div class="flex-1 max-w-2xl mx-8">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                        <input type="text" placeholder="Buscar produtos..."
+                            oninput="state.buscaTexto = this.value; renderizar();" 
+                            class="w-full pl-12 pr-4 py-3 bg-white border-none rounded-full focus:ring-2 focus:ring-yellow-400 shadow-sm transition-all text-gray-800">
+                    </div>
+                </div>
 
                 <div class="flex items-center gap-4">
-                    <span id="user-display" class="text-sm text-gray-600"></span>
+                    <span id="user-display" class="text-sm text-white/90"></span>
+                    
                     <button id="btn-login" onclick="abrirModal('modal-auth')"
-                        class="px-4 py-2 bg-black text-white rounded-full text-sm font-medium hover:bg-gray-800 transition-colors">
+                        class="px-5 py-2 bg-white text-[#0052cc] rounded-full text-sm font-bold hover:bg-gray-100 transition-colors shadow-sm">
                         Entrar
                     </button>
+                    
                     <button id="btn-logout" onclick="logout()"
-                        class="hidden px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-300 transition-colors">
+                        class="hidden px-4 py-2 bg-red-500 text-white rounded-full text-sm font-medium hover:bg-red-600 transition-colors">
                         Sair
                     </button>
+                    
                     <button onclick="toggleCarrinho()"
-                        class="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
-                        <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+                        class="relative p-2 hover:bg-white/10 rounded-full transition-colors text-white">
+                        <i data-lucide="shopping-cart" class="w-7 h-7"></i>
                         <span id="cart-badge"
-                            class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center badge-pulse">
+                            class="hidden absolute -top-1 -right-1 bg-yellow-400 text-[#0052cc] text-xs font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#0052cc]">
                             0
                         </span>
                     </button>
@@ -1879,7 +1876,7 @@ Forma de pagamento: PIX / WhatsApp
             </div>
         </div>
     </header>
-
+    
         <!-- Categorias -->
     <div class="bg-white border-b border-gray-100 sticky top-[73px] z-30">
         <div class="max-w-7xl mx-auto px-4 py-4">
