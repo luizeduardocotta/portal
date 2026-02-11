@@ -215,13 +215,22 @@
         }
 
         @keyframes pulse-whatsapp {
-        0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7); }
-        70% { box-shadow: 0 0 0 15px rgba(37, 211, 102, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
-    }
-    .animate-whatsapp {
-        animation: pulse-whatsapp 2s infinite;
-    }
+            0% {
+                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(37, 211, 102, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+            }
+        }
+
+        .animate-whatsapp {
+            animation: pulse-whatsapp 2s infinite;
+        }
     </style>
 </head>
 
@@ -495,7 +504,7 @@
 
             // HTML padronizado: Nome em destaque e telefone pequeno abaixo
             if (userDisplay) {
-    userDisplay.innerHTML = `
+                userDisplay.innerHTML = `
         <div class="flex items-center gap-3">
             <button onclick="redirecionarMeusPedidos()" 
                class="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full transition-all border border-gray-200 cursor-pointer">
@@ -509,9 +518,9 @@
             </div>
         </div>
     `;
-    // Reinicia os ícones do Lucide para o novo botão aparecer
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-}
+                // Reinicia os ícones do Lucide para o novo botão aparecer
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
 
             btnLogin.classList.add('hidden');
             btnLogout.classList.remove('hidden');
@@ -538,20 +547,20 @@
         }
     }
 
-   function redirecionarMeusPedidos() {
-    // Se não houver usuário logado no estado, manda para a página de pedidos/login
-    if (!state.usuarioAtual) {
-        window.location.href = 'https://portallagoasanta.com.br/meus-pedidos';
-        return;
-    }
+    function redirecionarMeusPedidos() {
+        // Se não houver usuário logado no estado, manda para a página de pedidos/login
+        if (!state.usuarioAtual) {
+            window.location.href = 'https://portallagoasanta.com.br/meus-pedidos';
+            return;
+        }
 
-    // Se o estado já diz que é admin, redireciona direto sem consultar o banco de novo
-    if (state.isAdmin) {
-        window.location.href = 'https://portallagoasanta.com.br/painel-admin';
-    } else {
-        window.location.href = 'https://portallagoasanta.com.br/meus-pedidos';
+        // Se o estado já diz que é admin, redireciona direto sem consultar o banco de novo
+        if (state.isAdmin) {
+            window.location.href = 'https://portallagoasanta.com.br/painel-admin';
+        } else {
+            window.location.href = 'https://portallagoasanta.com.br/meus-pedidos';
+        }
     }
-}
 
     function toggleAuthMode() {
         state.modoAuth = state.modoAuth === 'login' ? 'cadastro' : 'login';
@@ -869,41 +878,41 @@
     }
 
     // Função para mostrar detalhes do pedido
- window.mostrarDetalhesPedido = async function (pedidoId) {
+    window.mostrarDetalhesPedido = async function (pedidoId) {
 
-  // 1️⃣ Pedido
-  const { data: pedido, error: erroPedido } = await supabaseClient
-    .from('pedidos')
-    .select('*')
-    .eq('id', pedidoId)
-    .single();
+        // 1️⃣ Pedido
+        const { data: pedido, error: erroPedido } = await supabaseClient
+            .from('pedidos')
+            .select('*')
+            .eq('id', pedidoId)
+            .single();
 
-  if (erroPedido || !pedido) {
-    alert('Erro ao carregar pedido');
-    return;
-  }
+        if (erroPedido || !pedido) {
+            alert('Erro ao carregar pedido');
+            return;
+        }
 
-  // 2️⃣ Itens reais do pedido
-  const { data: itens, error: erroItens } = await supabaseClient
-    .from('itens_pedido')
-    .select(`
+        // 2️⃣ Itens reais do pedido
+        const { data: itens, error: erroItens } = await supabaseClient
+            .from('itens_pedido')
+            .select(`
       quantidade,
       preco_unitario,
       produtos ( nome )
     `)
-    .eq('pedido_id', pedidoId);
+            .eq('pedido_id', pedidoId);
 
-  if (erroItens) {
-    alert('Erro ao carregar itens do pedido');
-    return;
-  }
+        if (erroItens) {
+            alert('Erro ao carregar itens do pedido');
+            return;
+        }
 
-  // 3️⃣ Subtotal correto
-  const subtotal = itens.reduce((acc, item) => {
-    return acc + (item.preco_unitario * item.quantidade);
-  }, 0);
+        // 3️⃣ Subtotal correto
+        const subtotal = itens.reduce((acc, item) => {
+            return acc + (item.preco_unitario * item.quantidade);
+        }, 0);
 
-  const detalhes = `
+        const detalhes = `
 ━━━━━━━━━━━━━━━━━━━━━━
 📦 PEDIDO #${pedido.id}
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -913,10 +922,10 @@ Nome: ${pedido.nome_cliente || 'N/A'}
 WhatsApp: ${pedido.whatsapp || 'N/A'}
 
 🛍️ ITENS
-${itens.map(item => 
-  `• ${item.produtos?.nome || 'Produto'} 
+${itens.map(item =>
+            `• ${item.produtos?.nome || 'Produto'} 
    ${item.quantidade}x ${formatarMoeda(item.preco_unitario)}`
-).join('\n')}
+        ).join('\n')}
 
 💰 VALORES
 Subtotal: ${formatarMoeda(subtotal)}
@@ -931,8 +940,8 @@ Método: ${pedido.metodo_pagamento}
 ━━━━━━━━━━━━━━━━━━━━━━
 `;
 
-  alert(detalhes);
-};
+        alert(detalhes);
+    };
 
 
 
@@ -1261,28 +1270,28 @@ Método: ${pedido.metodo_pagamento}
         renderizarBadgeCarrinho();
     }
 
-  function renderizarCategorias() {
-    const container = document.getElementById('categorias');
-    // Mapeamos ícones para cada categoria (ajuste conforme os nomes que você tem no banco)
-    const icones = {
-        "Eletrônicos": "monitor",
-        "Roupas": "shirt",
-        "Acessórios": "watch",
-        "Casa": "home",
-        "Todos": "layout-grid"
-    };
+    function renderizarCategorias() {
+        const container = document.getElementById('categorias');
+        // Mapeamos ícones para cada categoria (ajuste conforme os nomes que você tem no banco)
+        const icones = {
+            "Eletrônicos": "monitor",
+            "Roupas": "shirt",
+            "Acessórios": "watch",
+            "Casa": "home",
+            "Todos": "layout-grid"
+        };
 
-    const categorias = obterCategorias();
-    
-    container.innerHTML = categorias.map(cat => {
-        const isActive = state.categoriaAtiva === cat;
-        const iconName = icones[cat] || 'tag'; // Ícone padrão se não encontrar
+        const categorias = obterCategorias();
 
-        return `
+        container.innerHTML = categorias.map(cat => {
+            const isActive = state.categoriaAtiva === cat;
+            const iconName = icones[cat] || 'tag'; // Ícone padrão se não encontrar
+
+            return `
             <button onclick="state.categoriaAtiva = '${cat}'; renderizar();" 
                 class="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 whitespace-nowrap border-2
-                ${isActive 
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105' 
+                ${isActive
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105'
                     : 'bg-white text-gray-700 border-gray-100 hover:border-blue-200 hover:bg-blue-50'
                 }"
             >
@@ -1290,11 +1299,11 @@ Método: ${pedido.metodo_pagamento}
                 ${cat}
             </button>
         `;
-    }).join('');
+        }).join('');
 
-    // Reinicializa os ícones do Lucide após renderizar
-    lucide.createIcons();
-}
+        // Reinicializa os ícones do Lucide após renderizar
+        lucide.createIcons();
+    }
 
     function renderizarProdutos() {
         console.log("🎨 Renderizando produtos...");
@@ -1835,49 +1844,67 @@ Forma de pagamento: PIX / WhatsApp
 <!-- VIEW: LOJA -->
 <div id="loja-view">
     <header class="shadow-sm sticky top-0 z-40 bg-[#0052cc]">
-        <div class="max-w-7xl mx-auto px-4 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <img id="logo-loja" src="img/logo.webp" class="h-28 w-28 object-cover rounded-full border-2 border-white/20"
-                        alt="Logo da loja">
-                </div>
+        <div class="max-w-7xl mx-auto px-4 py-2 md:py-3">
+            <div class="flex flex-col md:flex-row items-center gap-2 md:gap-6">
 
-                <div class="flex-1 max-w-2xl mx-8">
-                    <div class="relative">
-                        <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
-                        <input type="text" placeholder="Buscar produtos..."
-                            oninput="state.buscaTexto = this.value; renderizar();" 
-                            class="w-full pl-12 pr-4 py-3 bg-white border-none rounded-full focus:ring-2 focus:ring-yellow-400 shadow-sm transition-all text-gray-800">
+                <div class="flex items-center justify-between w-full md:w-auto gap-4">
+                    <div class="flex-shrink-0">
+                        <img id="logo-loja" src="img/logo.webp"
+                            class="h-20 w-20 md:h-28 md:w-28 object-cover rounded-full border-2 border-white/20 shadow-lg"
+                            alt="Logo da loja">
+                    </div>
+
+                    <div class="flex items-center gap-1 md:hidden">
+                        <button onclick="abrirModal('modal-auth')" class="p-2 text-white">
+                            <i data-lucide="user" class="w-6 h-6"></i>
+                        </button>
+
+                        <button onclick="toggleCarrinho()" class="relative p-2 text-white">
+                            <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+                            <span id="cart-badge-mobile"
+                                class="hidden absolute top-1 right-1 bg-yellow-400 text-[#0052cc] text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center border border-[#0052cc]">0</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-4">
-                    <span id="user-display" class="text-sm text-white/90"></span>
-                    
+                <div class="w-full md:max-w-md lg:max-w-lg">
+                    <div class="relative">
+                        <i data-lucide="search"
+                            class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+                        <input type="text" placeholder="Buscar produtos..."
+                            oninput="state.buscaTexto = this.value; renderizar();"
+                            class="w-full pl-10 pr-4 py-2 bg-white border-none rounded-full focus:ring-2 focus:ring-yellow-400 shadow-sm transition-all text-sm text-gray-800">
+                    </div>
+                </div>
+
+                <div class="hidden md:flex items-center gap-3 ml-auto flex-shrink-0">
+                    <span id="user-display" class="text-xs text-white/90"></span>
+
                     <button id="btn-login" onclick="abrirModal('modal-auth')"
-                        class="px-5 py-2 bg-white text-[#0052cc] rounded-full text-sm font-bold hover:bg-gray-100 transition-colors shadow-sm">
+                        class="px-4 py-1.5 bg-white text-[#0052cc] rounded-full text-xs font-bold hover:bg-gray-100 transition-colors shadow-sm">
                         Entrar
                     </button>
-                    
+
                     <button id="btn-logout" onclick="logout()"
-                        class="hidden px-4 py-2 bg-red-500 text-white rounded-full text-sm font-medium hover:bg-red-600 transition-colors">
+                        class="hidden px-4 py-1.5 bg-red-500 text-white rounded-full text-xs font-medium hover:bg-red-600 transition-colors">
                         Sair
                     </button>
-                    
+
                     <button onclick="toggleCarrinho()"
                         class="relative p-2 hover:bg-white/10 rounded-full transition-colors text-white">
-                        <i data-lucide="shopping-cart" class="w-7 h-7"></i>
+                        <i data-lucide="shopping-cart" class="w-6 h-6"></i>
                         <span id="cart-badge"
-                            class="hidden absolute -top-1 -right-1 bg-yellow-400 text-[#0052cc] text-xs font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#0052cc]">
+                            class="hidden absolute top-0 right-0 bg-yellow-400 text-[#0052cc] text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center border border-[#0052cc]">
                             0
                         </span>
                     </button>
                 </div>
+
             </div>
         </div>
     </header>
-    
-        <!-- Categorias -->
+
+    <!-- Categorias -->
     <div class="bg-white border-b border-gray-100 sticky top-[73px] z-30">
         <div class="max-w-7xl mx-auto px-4 py-4">
             <div id="categorias" class="flex gap-3 overflow-x-auto px-4 py-2 scrollbar-hide"></div>
@@ -1900,7 +1927,7 @@ Forma de pagamento: PIX / WhatsApp
         </div>
     </section>
 
-   
+
 
 
     <!-- Produtos -->
@@ -1943,43 +1970,40 @@ Forma de pagamento: PIX / WhatsApp
     </div>
 
     <div class="flex gap-2 mb-6">
-    <button id="admin-tab-dashboard" 
-        onclick="window.location.href='https://portallagoasanta.com.br/painel-admin'"
-        class="px-6 py-3 rounded-lg font-bold transition-all bg-green-600 text-white hover:bg-green-700 shadow-md">
-        📊 Dashboard
-    </button>
-    
-    <button id="admin-tab-pedidos" 
-        onclick="switchAdminTab('pedidos')"
-        class="px-6 py-3 rounded-lg font-medium transition-all bg-gray-900 text-white hover:bg-black shadow-sm">
-        📦 Pedidos
-    </button>
-    
-    <button id="admin-tab-produtos" 
-        onclick="switchAdminTab('produtos')"
-        class="px-6 py-3 rounded-lg font-medium transition-all bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 shadow-sm">
-        🛒 Produtos
-    </button>
-</div>
+        <button id="admin-tab-dashboard" onclick="window.location.href='https://portallagoasanta.com.br/painel-admin'"
+            class="px-6 py-3 rounded-lg font-bold transition-all bg-green-600 text-white hover:bg-green-700 shadow-md">
+            📊 Dashboard
+        </button>
 
-        <!-- Seção Pedidos -->
-        <div id="admin-sec-pedidos" class="bg-white rounded-2xl shadow-sm p-6">
-            <h2 class="text-xl font-bold mb-4">Gestão de Pedidos</h2>
-            <div id="admin-pedidos-list"></div>
-        </div>
+        <button id="admin-tab-pedidos" onclick="switchAdminTab('pedidos')"
+            class="px-6 py-3 rounded-lg font-medium transition-all bg-gray-900 text-white hover:bg-black shadow-sm">
+            📦 Pedidos
+        </button>
 
-        <!-- Seção Produtos -->
-        <div id="admin-sec-produtos" class="hidden bg-white rounded-2xl shadow-sm p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-bold">Gestão de Produtos</h2>
-                <button onclick="novoProduto()"
-                    class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors">
-                    + Novo Produto
-                </button>
-            </div>
-            <div id="admin-produtos-list"></div>
-        </div>
+        <button id="admin-tab-produtos" onclick="switchAdminTab('produtos')"
+            class="px-6 py-3 rounded-lg font-medium transition-all bg-white text-gray-700 border border-gray-200 hover:bg-gray-100 shadow-sm">
+            🛒 Produtos
+        </button>
     </div>
+
+    <!-- Seção Pedidos -->
+    <div id="admin-sec-pedidos" class="bg-white rounded-2xl shadow-sm p-6">
+        <h2 class="text-xl font-bold mb-4">Gestão de Pedidos</h2>
+        <div id="admin-pedidos-list"></div>
+    </div>
+
+    <!-- Seção Produtos -->
+    <div id="admin-sec-produtos" class="hidden bg-white rounded-2xl shadow-sm p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold">Gestão de Produtos</h2>
+            <button onclick="novoProduto()"
+                class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors">
+                + Novo Produto
+            </button>
+        </div>
+        <div id="admin-produtos-list"></div>
+    </div>
+</div>
 </div>
 
 <script>
@@ -2194,16 +2218,16 @@ Forma de pagamento: PIX / WhatsApp
 </script>
 
 <!-- Banner Promocional -->
-    <section class="w-full overflow-hidden">
-        <div class="relative w-full aspect-[16/4] md:aspect-[16/3]">
+<section class="w-full overflow-hidden">
+    <div class="relative w-full aspect-[16/4] md:aspect-[16/3]">
 
-            <div id="slider" class="flex w-full h-full transition-transform duration-500 ease-in-out">
-                <img src="./img/banner-final.webp" class="w-full h-full object-cover flex-shrink-0" />
-            </div>
-
-
+        <div id="slider" class="flex w-full h-full transition-transform duration-500 ease-in-out">
+            <img src="./img/banner-final.webp" class="w-full h-full object-cover flex-shrink-0" />
         </div>
-    </section>
+
+
+    </div>
+</section>
 
 <footer class="bg-gray-900 text-white pt-12 pb-6">
     <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 border-b border-gray-800 pb-8">
@@ -2285,17 +2309,20 @@ Forma de pagamento: PIX / WhatsApp
 
 <a href="https://wa.me/5531999142074" target="_blank" rel="noopener noreferrer"
     class="fixed bottom-6 right-6 z-50 flex items-center justify-center w-16 h-16 bg-[#25D366] text-white rounded-full shadow-2xl hover:bg-[#20ba56] hover:-translate-y-1 transition-all duration-300 group animate-whatsapp">
-    
+
     <svg width="35" height="35" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.937 3.659 1.432 5.631 1.433h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        <path
+            d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.937 3.659 1.432 5.631 1.433h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
     </svg>
 
     <span class="absolute top-0 right-0 flex h-6 w-6">
         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-6 w-6 bg-red-600 border-2 border-white text-[11px] items-center justify-center font-bold">1</span>
+        <span
+            class="relative inline-flex rounded-full h-6 w-6 bg-red-600 border-2 border-white text-[11px] items-center justify-center font-bold">1</span>
     </span>
 
-    <span class="absolute right-20 bg-white text-gray-800 text-sm font-bold px-4 py-2 rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap pointer-events-none border border-gray-100">
+    <span
+        class="absolute right-20 bg-white text-gray-800 text-sm font-bold px-4 py-2 rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap pointer-events-none border border-gray-100">
         Dúvidas? Chame aqui! 👋
     </span>
 </a>
